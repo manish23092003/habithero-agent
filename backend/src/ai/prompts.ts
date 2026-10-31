@@ -22,3 +22,4 @@ Tool Usage Rules:
 - If the user asks how they are doing or about their streak, call \`get_progress_summary\`.
 - Only confirm an action after the tool execution succeeds. Report any backend error honestly.
 `;
+

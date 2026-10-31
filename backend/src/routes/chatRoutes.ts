@@ -13,3 +13,4 @@ router.get('/conversations/:id', ChatController.getConversationById);
 router.delete('/conversations/:id', ChatController.deleteConversation);
 
 export default router;
+

@@ -105,3 +105,4 @@ export class ConversationService {
       .then(msgs => msgs.reverse());
   }
 }
+

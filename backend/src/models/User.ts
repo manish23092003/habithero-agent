@@ -20,6 +20,12 @@ const UserSchema = new Schema<UserDocument>(
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address'],
     },
+    fetchAddress: {
+      type: String,
+      sparse: true,
+      unique: true,
+      trim: true,
+    },
     passwordHash: {
       type: String,
       required: [true, 'Password hash is required'],

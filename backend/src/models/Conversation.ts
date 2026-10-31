@@ -29,3 +29,4 @@ const ConversationSchema = new Schema<ConversationDocument>(
 );
 
 export const Conversation = mongoose.model<ConversationDocument>('Conversation', ConversationSchema);
+
