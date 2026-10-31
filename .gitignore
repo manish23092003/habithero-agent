@@ -1,0 +1,23 @@
+# HabitHero Root Gitignore
+node_modules
+.env
+.env.local
+dist
+build
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# Agentverse / Fetch.ai keys
+*.agent.key
+agent-key.json
+agent.private_key
+
+# Playwright MCP artifacts
+.playwright-mcp/
