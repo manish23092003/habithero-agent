@@ -12,3 +12,4 @@ AGENT_PORT = int(os.getenv("AGENT_PORT", "8000"))
 BACKEND_URL = os.getenv("BACKEND_API_URL", "http://localhost:5000/api/agent/chat")
 AGENT_SERVICE_SECRET = os.getenv("AGENT_SERVICE_SECRET", "habithero_internal_secret_hackathon_2026")
 AGENT_MAILBOX_KEY = os.getenv("AGENT_MAILBOX_KEY", "").strip() or None
+

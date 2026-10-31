@@ -1,185 +1,208 @@
 import React from 'react';
 import { 
   Flame, 
-  Trophy, 
-  ShieldCheck, 
   TrendingUp, 
   Calendar, 
-  HelpCircle,
-  Award
+  Award,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
-import { UserStats } from '../types';
+import { UserStats, DailyTask } from '../types';
 
 interface ConsistencyTrackerProps {
   stats: UserStats;
+  tasks?: DailyTask[];
+  compact?: boolean;
 }
 
-export const ConsistencyTracker: React.FC<ConsistencyTrackerProps> = ({ stats }) => {
-  // Generate 28-day sample heatmap days
-  const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const heatmapCells = Array.from({ length: 28 }, (_, i) => {
-    // Generate realistic data: mostly 2 or 3 completed tasks, one day with 0 (which triggered recovery!)
-    if (i === 19) return { day: i + 1, count: 0, status: 'missed' };
-    if (i === 20) return { day: i + 1, count: 1, status: 'adapted' };
-    if (i > 24) return { day: i + 1, count: 2, status: 'completed' };
-    const count = (i % 3 === 0) ? 3 : 2;
-    return { day: i + 1, count, status: 'completed' };
+export const ConsistencyTracker: React.FC<ConsistencyTrackerProps> = ({ 
+  stats,
+  tasks = [],
+  compact = false 
+}) => {
+  const completedToday = tasks.filter(t => t.status === 'completed').length;
+  const totalToday = tasks.length;
+  const todayPercentage = totalToday > 0 ? Math.round((completedToday / totalToday) * 100) : 100;
+
+  // Day names for the current week
+  const weekDays = [
+    { label: 'Mon', short: 'M' },
+    { label: 'Tue', short: 'T' },
+    { label: 'Wed', short: 'W' },
+    { label: 'Thu', short: 'T' },
+    { label: 'Fri', short: 'F' },
+    { label: 'Sat', short: 'S' },
+    { label: 'Sun', short: 'S' },
+  ];
+
+  // Map weekly completions from actual stats.weeklyCompleted or fall back to current streak distribution
+  const todayDayIndex = (new Date().getDay() + 6) % 7; // Monday = 0, Sunday = 6
+  const weeklyData = weekDays.map((day, idx) => {
+    const isPast = idx < todayDayIndex;
+    const isToday = idx === todayDayIndex;
+    const isFuture = idx > todayDayIndex;
+
+    // Use stats.weeklyCompleted if provided, otherwise derive from current streak and today's tasks
+    let count = 0;
+    if (Array.isArray(stats.weeklyCompleted) && stats.weeklyCompleted[idx] !== undefined) {
+      count = stats.weeklyCompleted[idx];
+    } else if (isToday) {
+      count = completedToday;
+    } else if (isPast) {
+      count = (stats.currentStreak > (todayDayIndex - idx)) ? 1 : 0;
+    }
+
+    return {
+      ...day,
+      isToday,
+      isPast,
+      isFuture,
+      count,
+      status: count > 0 ? 'completed' : isToday && totalToday > 0 ? 'pending' : 'scheduled'
+    };
   });
 
+  const weeklyCompletedCount = weeklyData.filter(d => d.count > 0).length;
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">
-          Consistency & Streak Analytics
-        </h2>
-        <p className="text-xs text-slate-500 mt-1">
-          Tracking your behavioral momentum, adaptive bounce-backs, and long-term milestones.
-        </p>
-      </div>
+    <div className="space-y-4">
+      {/* Header (Only on dedicated Analytics tab) */}
+      {!compact && (
+        <div className="pb-2 border-b border-slate-200/80">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
+            Consistency & Streak Analytics
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Tracking your behavioral momentum, weekly execution, and habit resilience.
+          </p>
+        </div>
+      )}
 
-      {/* Top 4 Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Current Streak */}
-        <div className="rounded-xl border border-orange-200/80 bg-gradient-to-br from-orange-50/80 to-white p-4 shadow-subtle space-y-1">
-          <div className="flex items-center justify-between text-xs font-semibold text-orange-800">
+      {/* 4 Prioritized Metric Cards */}
+      <div className={`grid gap-3 ${compact ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
+        {/* 1. Active Streak */}
+        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-card space-y-1">
+          <div className="flex items-center justify-between text-xs font-medium text-slate-500">
             <span>Active Streak</span>
-            <Flame className="w-4 h-4 text-orange-500 fill-orange-500" />
+            <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-orange-950">
-            {stats.currentStreak} <span className="text-xs font-semibold text-orange-700">Days</span>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">
+            {stats.currentStreak} <span className="text-xs font-normal text-slate-500">Days</span>
           </div>
-          <p className="text-[11px] text-orange-800/80">
-            Target: 7-day milestone badge
+          <p className="text-[11px] text-slate-500 truncate">
+            {stats.currentStreak > 0 ? 'Unbroken daily continuity' : 'Kickoff today to build streak'}
           </p>
         </div>
 
-        {/* Longest Streak */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-subtle space-y-1">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-            <span>Personal Best</span>
-            <Trophy className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-            {stats.longestStreak} <span className="text-xs font-semibold text-slate-500">Days</span>
-          </div>
-          <p className="text-[11px] text-slate-500">
-            Achieved earlier this month
-          </p>
-        </div>
-
-        {/* Consistency Rate */}
-        <div className="rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/80 to-white p-4 shadow-subtle space-y-1">
-          <div className="flex items-center justify-between text-xs font-semibold text-emerald-800">
+        {/* 2. Consistency Rate */}
+        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-card space-y-1">
+          <div className="flex items-center justify-between text-xs font-medium text-slate-500">
             <span>Consistency Rate</span>
-            <TrendingUp className="w-4 h-4 text-emerald-600" />
+            <TrendingUp className="w-4 h-4 text-brand-600" />
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-950">
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">
             {stats.consistencyRate}%
           </div>
-          <p className="text-[11px] text-emerald-700">
-            Top 10% of consistent learners
+          <p className="text-[11px] text-brand-700 truncate font-medium">
+            Scheduled action follow-through
           </p>
         </div>
 
-        {/* Recovery Resilience */}
-        <div className="rounded-xl border border-teal-200/80 bg-gradient-to-br from-teal-50/80 to-white p-4 shadow-subtle space-y-1">
-          <div className="flex items-center justify-between text-xs font-semibold text-teal-800">
-            <span className="flex items-center gap-1">
-              Resilience Score
-              <span title="Score measures how consistently you adapt and rebound after a missed task">
-                <HelpCircle className="w-3 h-3 text-teal-600 cursor-help" />
-              </span>
-            </span>
-            <ShieldCheck className="w-4 h-4 text-teal-600" />
+        {/* 3. Today's Completion */}
+        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-card space-y-1">
+          <div className="flex items-center justify-between text-xs font-medium text-slate-500">
+            <span>Today's Actions</span>
+            <CheckCircle2 className="w-4 h-4 text-brand-600" />
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-teal-950">
-            {stats.recoveryResilienceScore}%
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">
+            {completedToday}/{totalToday} <span className="text-xs font-normal text-slate-500">({todayPercentage}%)</span>
           </div>
-          <p className="text-[11px] text-teal-800">
-            High adaptive bounce-back
+          <p className="text-[11px] text-slate-500 truncate">
+            {completedToday === totalToday && totalToday > 0 
+              ? 'Daily objective fulfilled' 
+              : `${totalToday - completedToday} pending action(s)`}
+          </p>
+        </div>
+
+        {/* 4. Weekly Progress */}
+        <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-card space-y-1">
+          <div className="flex items-center justify-between text-xs font-medium text-slate-500">
+            <span>Weekly Progress</span>
+            <Calendar className="w-4 h-4 text-brand-600" />
+          </div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 tabular-nums">
+            {weeklyCompletedCount} of 7 <span className="text-xs font-normal text-slate-500">Days</span>
+          </div>
+          <p className="text-[11px] text-slate-500 truncate">
+            {weeklyCompletedCount >= 5 ? 'High weekly consistency' : 'Momentum in progress'}
           </p>
         </div>
       </div>
 
-      {/* 28-Day Habit Heatmap Grid */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-card space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      {/* Weekly Progress Bar & Day Tracker */}
+      <div className="rounded-xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-card space-y-3.5">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-emerald-600" />
-              28-Day Consistency Matrix
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-brand-600" />
+              <span>Current Week Progress</span>
             </h3>
-            <p className="text-xs text-slate-500">
-              Each block represents completed daily micro-actions.
+            <p className="text-[11px] text-slate-500">
+              Daily habit execution for this week
             </p>
           </div>
-
-          {/* Legend */}
-          <div className="flex items-center gap-3 text-[11px] text-slate-500 font-medium self-start sm:self-auto">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm bg-slate-100 border border-slate-200" />
-              0
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm bg-amber-300" />
-              Adapted
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400" />
-              1-2
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-sm bg-emerald-600" />
-              3+
-            </span>
-          </div>
+          <span className="text-xs font-bold text-brand-800 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200/60 tabular-nums">
+            {weeklyCompletedCount}/7 Days Completed
+          </span>
         </div>
 
-        {/* Days of week header */}
-        <div className="grid grid-cols-7 gap-2 text-center text-[10px] font-bold text-slate-400">
-          {daysOfWeek.map((d, i) => (
-            <div key={i}>{d}</div>
-          ))}
-        </div>
-
-        {/* Heatmap Blocks */}
+        {/* 7-Day Matrix */}
         <div className="grid grid-cols-7 gap-2">
-          {heatmapCells.map(cell => {
-            let colorClass = 'bg-slate-100 hover:ring-2 hover:ring-slate-300';
-            if (cell.status === 'adapted') colorClass = 'bg-amber-300 hover:ring-2 hover:ring-amber-400';
-            else if (cell.count === 1) colorClass = 'bg-emerald-300 hover:ring-2 hover:ring-emerald-400';
-            else if (cell.count === 2) colorClass = 'bg-emerald-500 hover:ring-2 hover:ring-emerald-600';
-            else if (cell.count >= 3) colorClass = 'bg-emerald-700 hover:ring-2 hover:ring-emerald-800';
-
+          {weeklyData.map((d, i) => {
+            const isDone = d.count > 0;
             return (
-              <div
-                key={cell.day}
-                title={`Day ${cell.day}: ${cell.count} tasks completed (${cell.status})`}
-                className={`h-9 sm:h-11 rounded-lg flex flex-col items-center justify-center text-xs font-semibold cursor-pointer transition-all ${colorClass} ${
-                  cell.count > 1 ? 'text-white' : 'text-slate-700'
+              <div 
+                key={i} 
+                className={`p-2.5 rounded-xl border text-center transition-all ${
+                  isDone
+                    ? 'bg-brand-50 border-brand-300 text-brand-900 font-bold'
+                    : d.isToday
+                    ? 'bg-white border-brand-500 ring-2 ring-brand-500/20 text-slate-900 font-semibold'
+                    : 'bg-slate-50/70 border-slate-200 text-slate-400'
                 }`}
               >
-                <span className="text-[10px] opacity-75">{cell.day}</span>
-                {cell.status === 'adapted' ? (
-                  <span className="text-[9px] font-bold text-amber-900 leading-none">⚡</span>
-                ) : null}
+                <span className="text-[10px] font-bold uppercase tracking-wider block text-slate-500 mb-1">
+                  {d.label}
+                </span>
+                <div className="flex items-center justify-center h-6">
+                  {isDone ? (
+                    <span className="w-5 h-5 rounded-full bg-brand-600 text-white flex items-center justify-center text-[10px]">
+                      ✓
+                    </span>
+                  ) : d.isToday ? (
+                    <span className="text-xs font-bold text-brand-700">Today</span>
+                  ) : (
+                    <span className="text-xs text-slate-300">—</span>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
+      </div>
 
-        {/* Science note on HabitHero Philosophy */}
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
-          <span className="font-bold text-slate-800 flex items-center gap-1.5">
-            <Award className="w-3.5 h-3.5 text-emerald-600" />
-            The HabitHero Philosophy: The "Never Miss Twice" Principle
-          </span>
-          <p className="leading-relaxed">
-            Missing one day is an accident; missing two is the start of a new habit. HabitHero is designed around reducing task friction on hectic days to ensure your momentum remains unbroken.
+      {/* Behavioral Philosophy (Only in full Analytics tab) */}
+      {!compact && (
+        <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-card space-y-2">
+          <h4 className="text-xs uppercase font-bold tracking-wider text-slate-600 flex items-center gap-1.5">
+            <Award className="w-4 h-4 text-brand-600" />
+            <span>Habit Mastery Principle: Never Miss Twice</span>
+          </h4>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Behavioral science confirms that an isolated missed day does not degrade long-term habit formation. Missing two consecutive days, however, begins ingraining avoidance. When schedule friction spikes, HabitHero automatically offers 15-minute micro-sprints to preserve psychological continuity.
           </p>
         </div>
-      </div>
+      )}
     </div>
   );
 };

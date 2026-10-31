@@ -142,3 +142,4 @@ To connect this agent to the live Agentverse mailbox and ASI:One:
 2. Set `AGENT_MAILBOX_KEY=<your-key>` in `.env`.
 3. Start the agent with `python agent.py`.
 4. Register the agent in the Agentverse Explorer and test interaction on [asi1.ai/chat](https://asi1.ai/chat).
+

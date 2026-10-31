@@ -49,6 +49,7 @@ export const App: React.FC = () => {
   const [isNewGoalOpen, setIsNewGoalOpen] = useState(false);
   const [isCheckInOpen, setIsCheckInOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [inFlightTaskIds, setInFlightTaskIds] = useState<Set<string>>(new Set());
 
   // Sync messages locally
   useEffect(() => {
@@ -92,24 +93,36 @@ export const App: React.FC = () => {
           api.getTodayTasks(),
         ]);
 
-        if (dbGoals.length > 0) {
-          setGoals(dbGoals);
+        setGoals(dbGoals);
+        setTasks(dbTasks);
+
+        // Derive real stats directly from user's active MongoDB records
+        const realStreak = dbGoals.reduce((max, g) => Math.max(max, g.streak || 0), 0);
+        const completedTasksCount = dbTasks.filter(t => t.status === 'completed').length;
+        const consistencyRate = dbTasks.length > 0
+          ? Math.round((completedTasksCount / dbTasks.length) * 100)
+          : (realStreak > 0 ? 100 : 0);
+
+        setStats(prev => ({
+          ...prev,
+          currentStreak: realStreak,
+          longestStreak: Math.max(prev.longestStreak, realStreak),
+          consistencyRate,
+        }));
+      } else {
+        // Guest mode / not logged in preview
+        const savedGoals = localStorage.getItem('habithero_goals');
+        const savedTasks = localStorage.getItem('habithero_tasks');
+        if (savedGoals) {
+          setGoals(JSON.parse(savedGoals));
         } else {
-          // If fresh user with no goals, keep sample template or offer kickoff
           setGoals(INITIAL_GOALS);
         }
-
-        if (dbTasks.length > 0) {
-          setTasks(dbTasks);
+        if (savedTasks) {
+          setTasks(JSON.parse(savedTasks));
         } else {
           setTasks(INITIAL_TASKS);
         }
-      } else {
-        // Guest mode / not logged in
-        const savedGoals = localStorage.getItem('habithero_goals');
-        const savedTasks = localStorage.getItem('habithero_tasks');
-        if (savedGoals) setGoals(JSON.parse(savedGoals));
-        if (savedTasks) setTasks(JSON.parse(savedTasks));
       }
     } catch (err: any) {
       console.warn('API sync warning:', err.message);
@@ -137,11 +150,14 @@ export const App: React.FC = () => {
     setTasks(INITIAL_TASKS);
   };
 
-  // Toggle complete task (MongoDB persisted)
+  // Toggle complete task (MongoDB persisted with in-flight lock & error rollback)
   const handleToggleComplete = async (taskId: string) => {
+    if (inFlightTaskIds.has(taskId)) return; // Prevent duplicate rapid submission
     const targetTask = tasks.find(t => t.id === taskId);
     if (!targetTask) return;
     const nowCompleted = targetTask.status !== 'completed';
+
+    setInFlightTaskIds(prev => new Set(prev).add(taskId));
 
     // Optimistic UI update
     setTasks(prevTasks =>
@@ -159,7 +175,9 @@ export const App: React.FC = () => {
 
     setStats(prevStats => ({
       ...prevStats,
-      totalCompletedTasks: prevStats.totalCompletedTasks + 1,
+      totalCompletedTasks: nowCompleted
+        ? prevStats.totalCompletedTasks + 1
+        : Math.max(0, prevStats.totalCompletedTasks - 1),
     }));
 
     // Persist to MongoDB if connected and authenticated
@@ -168,9 +186,33 @@ export const App: React.FC = () => {
         await api.completeTask(taskId, nowCompleted);
       } catch (err: any) {
         console.error('Failed to persist task completion to MongoDB:', err.message);
+        // Rollback on error
+        setTasks(prevTasks =>
+          prevTasks.map(t => {
+            if (t.id !== taskId) return t;
+            return {
+              ...t,
+              status: !nowCompleted ? 'completed' : 'pending',
+              completedAt: !nowCompleted
+                ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : undefined,
+            };
+          })
+        );
+      } finally {
+        setInFlightTaskIds(prev => {
+          const next = new Set(prev);
+          next.delete(taskId);
+          return next;
+        });
       }
     } else {
       localStorage.setItem('habithero_tasks', JSON.stringify(tasks));
+      setInFlightTaskIds(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
     }
   };
 
@@ -445,7 +487,7 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-8 space-y-6">
         {/* API Error / Reconnect Banner if needed */}
         {apiError && (
           <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3">
@@ -479,6 +521,7 @@ export const App: React.FC = () => {
               onOpenCheckIn={() => setIsCheckInOpen(true)}
               onOpenCompanionChat={() => setIsChatOpen(true)}
               currentStreak={stats.currentStreak}
+              currentUser={currentUser}
             />
 
             {/* Tab-driven Views */}
@@ -492,6 +535,7 @@ export const App: React.FC = () => {
                     onQuickAdapt={handleQuickAdapt}
                     onOpenNewGoal={() => setIsNewGoalOpen(true)}
                     onOpenCheckIn={() => setIsCheckInOpen(true)}
+                    inFlightTaskIds={inFlightTaskIds}
                   />
                 </div>
 
@@ -499,8 +543,9 @@ export const App: React.FC = () => {
                 <div className="space-y-6">
                   <FetchAiProtocolBanner
                     onOpenCompanionChat={() => setIsChatOpen(true)}
+                    isConnected={isBackendConnected}
                   />
-                  <ConsistencyTracker stats={stats} />
+                  <ConsistencyTracker stats={stats} tasks={tasks} compact={true} />
                 </div>
               </div>
             )}
@@ -515,9 +560,10 @@ export const App: React.FC = () => {
 
             {activeTab === 'analytics' && (
               <div className="space-y-6">
-                <ConsistencyTracker stats={stats} />
+                <ConsistencyTracker stats={stats} tasks={tasks} />
                 <FetchAiProtocolBanner
                   onOpenCompanionChat={() => setIsChatOpen(true)}
+                  isConnected={isBackendConnected}
                 />
               </div>
             )}
@@ -526,22 +572,29 @@ export const App: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-6 mt-12">
+      <footer className="border-t border-slate-200/80 bg-white py-6 mb-16 md:mb-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <div>
-            <span className="font-bold text-slate-700">HabitHero</span> — Node.js & Express API + MongoDB Connected (Phase 2).
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-800">HabitHero</span>
+            <span>—</span>
+            <span className="text-slate-500">AI Accountability Companion & Autonomous Habit Protocol</span>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1 font-semibold text-emerald-700">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              MongoDB Connected
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/70">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {isBackendConnected ? 'MongoDB Live' : 'Local Storage Mode'}
             </span>
             <span>•</span>
-            <a href="https://asi1.ai/chat" target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline">
-              ASI:One Platform
+            <a 
+              href="https://asi1.ai/chat" 
+              target="_blank" 
+              rel="noreferrer" 
+              className="text-slate-600 hover:text-brand-600 transition-colors"
+            >
+              ASI:One Chat
             </a>
             <span>•</span>
-            <span>Fetch.ai Chat Protocol v1</span>
+            <span className="font-mono text-[11px] text-slate-400">AgentChat 0.3.0</span>
           </div>
         </div>
       </footer>

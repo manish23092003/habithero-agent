@@ -105,21 +105,14 @@ def create_agent(
     """
     Create and configure the HabitHero Fetch.ai uAgent with Chat Protocol 0.3.0 and Agentverse capabilities.
     """
-    kwargs = {
-        "name": name,
-        "seed": seed,
-        "port": port,
-        "publish_agent_details": True,
-        "description": "HabitHero is your AI accountability companion for consistent habit formation, daily check-ins, and adaptive goal recovery.",
-    }
-
-    if mailbox_key:
-        kwargs["mailbox"] = mailbox_key
-    else:
-        # Local development HTTP endpoint for direct agent-to-agent communication
-        kwargs["endpoint"] = f"http://localhost:{port}/submit"
-
-    agent_instance = Agent(**kwargs)
+    agent_instance = Agent(
+        name=name,
+        seed=seed,
+        port=port,
+        mailbox=mailbox_key if mailbox_key else True,
+        publish_agent_details=True,
+        description="An AI companion that helps people build consistent habits through personalized plans, daily check-ins, progress tracking and adaptive accountability.",
+    )
 
     # Include the verified Chat Protocol with published manifest
     agent_instance.include(chat_proto, publish_manifest=True)

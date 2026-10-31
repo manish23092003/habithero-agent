@@ -7,7 +7,9 @@ import {
   Target, 
   Briefcase, 
   Check,
-  ArrowRight
+  ArrowRight,
+  Clock,
+  Calendar
 } from 'lucide-react';
 import { Goal, GoalCategory, HabitPhase, DailyTask } from '../types';
 
@@ -18,10 +20,10 @@ interface NewGoalModalProps {
 }
 
 const CATEGORIES: { id: GoalCategory; label: string; icon: React.ReactNode }[] = [
-  { id: 'learning', label: 'Tech & Learning', icon: <BookOpen className="w-4 h-4" /> },
-  { id: 'productivity', label: 'Focus & Productivity', icon: <Target className="w-4 h-4" /> },
-  { id: 'health', label: 'Health & Fitness', icon: <Activity className="w-4 h-4" /> },
-  { id: 'career', label: 'Career Growth', icon: <Briefcase className="w-4 h-4" /> }
+  { id: 'learning', label: 'Tech & Learning', icon: <BookOpen className="w-3.5 h-3.5" /> },
+  { id: 'productivity', label: 'Deep Work & Productivity', icon: <Target className="w-3.5 h-3.5" /> },
+  { id: 'health', label: 'Health & Fitness', icon: <Activity className="w-3.5 h-3.5" /> },
+  { id: 'career', label: 'Career Growth', icon: <Briefcase className="w-3.5 h-3.5" /> }
 ];
 
 export const NewGoalModal: React.FC<NewGoalModalProps> = ({
@@ -36,6 +38,15 @@ export const NewGoalModal: React.FC<NewGoalModalProps> = ({
   const [dailyMinutes, setDailyMinutes] = useState<number>(25);
   const [step, setStep] = useState<1 | 2>(1);
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleNext = (e: React.FormEvent) => {
@@ -49,14 +60,14 @@ export const NewGoalModal: React.FC<NewGoalModalProps> = ({
     const generatedPhases: HabitPhase[] = [
       {
         phaseNumber: 1,
-        title: 'Foundational Micro-Habit',
-        focus: `Establish consistency and low friction with initial ${dailyMinutes}m sessions`,
+        title: 'Foundational Consistency',
+        focus: `Establish zero-friction daily ritual with ${dailyMinutes}m sessions`,
         dayRange: `Days 1-${Math.round(targetDays * 0.25)}`,
         tasksPlanned: Math.round(targetDays * 0.25)
       },
       {
         phaseNumber: 2,
-        title: 'Core Competency & Flow',
+        title: 'Deep Competency & Flow',
         focus: 'Deepening mechanics and compound repetition',
         dayRange: `Days ${Math.round(targetDays * 0.25) + 1}-${Math.round(targetDays * 0.55)}`,
         tasksPlanned: Math.round(targetDays * 0.3)
@@ -100,72 +111,82 @@ export const NewGoalModal: React.FC<NewGoalModalProps> = ({
 
     onAddGoal(newGoal, initialTask);
     onClose();
-    // Reset form
     setTitle('');
     setTagline('');
     setStep(1);
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-goal-modal-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-elevation border border-slate-200 overflow-hidden">
         {/* Header */}
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <Sparkles className="w-4 h-4" />
+        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-700 border border-brand-200/60 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 text-brand-600" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">
-                {step === 1 ? 'Design Your Goal' : 'HabitHero AI Plan Preview'}
+              <h3 id="new-goal-modal-title" className="text-sm sm:text-base font-bold text-slate-900">
+                {step === 1 ? 'Design Habit Roadmap' : 'Review Autonomous Roadmap'}
               </h3>
               <p className="text-xs text-slate-500">
-                {step === 1 ? 'Tell HabitHero what you want to achieve' : 'Engineered for consistency and zero burnout'}
+                {step === 1 ? 'Specify your objective and daily commitment' : 'Curated 3-phase milestone progression'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+            aria-label="Close dialog"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {step === 1 ? (
-          <form onSubmit={handleNext} className="p-6 space-y-4">
+          <form onSubmit={handleNext} className="p-6 space-y-5">
             {/* Title */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                What goal do you want to achieve? *
+              <label htmlFor="goal-title-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                Habit Objective <span className="text-rose-500">*</span>
               </label>
               <input
+                id="goal-title-input"
                 type="text"
                 required
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder="e.g. Master TypeScript, Morning Gym Workout, Read Clean Code"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder:text-slate-400"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 placeholder:text-slate-400 transition-all"
               />
             </div>
 
             {/* Tagline / Why */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Why does this matter to you? (Optional)
+              <label htmlFor="goal-why-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                Core Motivation <span className="text-slate-400 font-normal">(Optional)</span>
               </label>
               <input
+                id="goal-why-input"
                 type="text"
                 value={tagline}
                 onChange={e => setTagline(e.target.value)}
-                placeholder="e.g. Land a software engineering role, boost stamina"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder:text-slate-400"
+                placeholder="e.g. Land a senior engineering role, build cognitive stamina"
+                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 placeholder:text-slate-400 transition-all"
               />
             </div>
 
             {/* Category selection */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
                 Category
               </label>
               <div className="grid grid-cols-2 gap-2">
@@ -174,9 +195,9 @@ export const NewGoalModal: React.FC<NewGoalModalProps> = ({
                     key={cat.id}
                     type="button"
                     onClick={() => setCategory(cat.id)}
-                    className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-semibold transition-all ${
                       category === cat.id
-                        ? 'border-emerald-500 bg-emerald-50/80 text-emerald-800'
+                        ? 'border-brand-500 bg-brand-50/80 text-brand-900 shadow-xs'
                         : 'border-slate-200 hover:bg-slate-50 text-slate-600'
                     }`}
                   >
@@ -188,21 +209,24 @@ export const NewGoalModal: React.FC<NewGoalModalProps> = ({
             </div>
 
             {/* Sliders: Duration & Daily Minutes */}
-            <div className="grid grid-cols-2 gap-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs">
-                  <span className="font-bold text-slate-700">Duration</span>
-                  <span className="font-extrabold text-emerald-700">{targetDays} Days</span>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    Target Horizon
+                  </span>
+                  <span className="font-bold text-brand-700 tabular-nums">{targetDays} Days</span>
                 </div>
-                <div className="flex gap-1">
-                  {[14, 21, 30].map(days => (
+                <div className="flex gap-1.5">
+                  {[14, 21, 30, 60].map(days => (
                     <button
                       key={days}
                       type="button"
                       onClick={() => setTargetDays(days)}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                         targetDays === days
-                          ? 'bg-slate-900 text-white border-slate-900'
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                       }`}
                     >
@@ -213,19 +237,22 @@ export const NewGoalModal: React.FC<NewGoalModalProps> = ({
               </div>
 
               <div className="space-y-1.5">
-                <div className="flex justify-between text-xs">
-                  <span className="font-bold text-slate-700">Daily Commitment</span>
-                  <span className="font-extrabold text-emerald-700">{dailyMinutes} min</span>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    Daily Commitment
+                  </span>
+                  <span className="font-bold text-brand-700 tabular-nums">{dailyMinutes} min</span>
                 </div>
-                <div className="flex gap-1">
-                  {[15, 25, 40].map(mins => (
+                <div className="flex gap-1.5">
+                  {[15, 25, 45, 60].map(mins => (
                     <button
                       key={mins}
                       type="button"
                       onClick={() => setDailyMinutes(mins)}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                         dailyMinutes === mins
-                          ? 'bg-slate-900 text-white border-slate-900'
+                          ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
                           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                       }`}
                     >
@@ -236,8 +263,8 @@ export const NewGoalModal: React.FC<NewGoalModalProps> = ({
               </div>
             </div>
 
-            {/* Submit */}
-            <div className="pt-4 flex justify-end gap-2 border-t border-slate-100">
+            {/* Actions */}
+            <div className="pt-4 flex items-center justify-end gap-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={onClose}
@@ -248,64 +275,64 @@ export const NewGoalModal: React.FC<NewGoalModalProps> = ({
               <button
                 type="submit"
                 disabled={!title.trim()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm transition-colors disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg shadow-subtle hover:shadow-card transition-all disabled:opacity-40"
               >
-                <span>Generate Habit Plan</span>
+                <span>Continue to Preview</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </form>
         ) : (
           <div className="p-6 space-y-4">
-            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+            <div className="p-4 rounded-xl bg-brand-50/70 border border-brand-200/80 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
-                  Habit Plan Architecture
+                <span className="text-[11px] font-bold text-brand-800 uppercase tracking-wider">
+                  Calibrated Plan Structure
                 </span>
-                <span className="text-xs font-extrabold text-emerald-900">
-                  {targetDays} Days • {dailyMinutes}m/day
+                <span className="text-xs font-bold text-brand-900 tabular-nums">
+                  {targetDays} Days • {dailyMinutes}m daily
                 </span>
               </div>
-              <h4 className="text-base font-extrabold text-slate-900">
+              <h4 className="text-base font-bold text-slate-900">
                 {title}
               </h4>
               <p className="text-xs text-slate-600">
-                Broken down into 3 manageable milestones with built-in accountability check-ins.
+                Segmented into 3 progressive phases to ensure mastery and prevent drop-off.
               </p>
             </div>
 
-            <div className="space-y-2.5">
-              <span className="text-xs uppercase font-bold tracking-wider text-slate-500">
-                Generated Phases
+            <div className="space-y-2">
+              <span className="text-[11px] uppercase font-bold tracking-wider text-slate-500">
+                Phased Progression
               </span>
               <div className="space-y-2">
-                <div className="p-3 rounded-lg border border-slate-200 bg-white flex items-center justify-between text-xs">
+                <div className="p-3 rounded-lg border border-slate-200/90 bg-white flex items-center justify-between text-xs">
                   <div>
-                    <span className="font-bold text-slate-900">Phase 1: Foundation Setup</span>
-                    <p className="text-slate-500 text-[11px]">Daily {dailyMinutes}m low-friction repetition</p>
+                    <span className="font-semibold text-slate-900">Phase 1: Foundation Setup</span>
+                    <p className="text-slate-500 text-[11px]">Daily low-friction {dailyMinutes}m habit anchor</p>
                   </div>
-                  <span className="font-bold text-slate-600">Days 1-{Math.round(targetDays * 0.25)}</span>
+                  <span className="font-medium text-slate-600 text-[11px] px-2 py-0.5 rounded bg-slate-100">Days 1-{Math.round(targetDays * 0.25)}</span>
                 </div>
 
-                <div className="p-3 rounded-lg border border-slate-200 bg-white flex items-center justify-between text-xs">
+                <div className="p-3 rounded-lg border border-slate-200/90 bg-white flex items-center justify-between text-xs">
                   <div>
-                    <span className="font-bold text-slate-900">Phase 2: Progressive Mastery</span>
-                    <p className="text-slate-500 text-[11px]">Sustained focus & core exercises</p>
+                    <span className="font-semibold text-slate-900">Phase 2: Progressive Mastery</span>
+                    <p className="text-slate-500 text-[11px]">Deep work focus & core exercise repetitions</p>
                   </div>
-                  <span className="font-bold text-slate-600">Days {Math.round(targetDays * 0.25) + 1}-{Math.round(targetDays * 0.55)}</span>
+                  <span className="font-medium text-slate-600 text-[11px] px-2 py-0.5 rounded bg-slate-100">Days {Math.round(targetDays * 0.25) + 1}-{Math.round(targetDays * 0.55)}</span>
                 </div>
 
-                <div className="p-3 rounded-lg border border-slate-200 bg-white flex items-center justify-between text-xs">
+                <div className="p-3 rounded-lg border border-slate-200/90 bg-white flex items-center justify-between text-xs">
                   <div>
-                    <span className="font-bold text-slate-900">Phase 3: Real Execution & Capstone</span>
-                    <p className="text-slate-500 text-[11px]">Independent creation & reflection</p>
+                    <span className="font-semibold text-slate-900">Phase 3: Execution Capstone</span>
+                    <p className="text-slate-500 text-[11px]">Autonomous implementation & reflection</p>
                   </div>
-                  <span className="font-bold text-slate-600">Days {Math.round(targetDays * 0.55) + 1}-{targetDays}</span>
+                  <span className="font-medium text-slate-600 text-[11px] px-2 py-0.5 rounded bg-slate-100">Days {Math.round(targetDays * 0.55) + 1}-{targetDays}</span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-3 flex justify-between gap-2 border-t border-slate-100">
+            <div className="pt-3 flex items-center justify-between gap-2 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setStep(1)}
@@ -316,10 +343,10 @@ export const NewGoalModal: React.FC<NewGoalModalProps> = ({
               <button
                 type="button"
                 onClick={handleCreate}
-                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg shadow-subtle hover:shadow-card transition-all"
               >
                 <Check className="w-4 h-4" />
-                <span>Confirm & Add to Today's Tasks</span>
+                <span>Confirm & Activate Goal</span>
               </button>
             </div>
           </div>

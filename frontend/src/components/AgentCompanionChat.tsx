@@ -6,7 +6,6 @@ import {
   X, 
   Zap, 
   Check, 
-  Radio, 
   ExternalLink,
   Wrench,
   CheckCircle2,
@@ -70,69 +69,87 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[460px] bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-all duration-300">
-      {/* Header */}
-      <div className="p-4 border-b border-slate-200 bg-slate-900 text-white flex items-center justify-between">
+    <>
+      {/* Drawer Backdrop Overlay */}
+      <div 
+        className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs transition-opacity animate-fade-in"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <div 
+        className="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] bg-white shadow-elevation border-l border-slate-200 flex flex-col transition-all duration-300"
+        role="dialog"
+        aria-label="HabitHero AI Companion Chat"
+        aria-modal="true"
+      >
+      {/* Drawer Header */}
+      <div className="px-5 py-4 border-b border-slate-200 bg-white flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md">
+            <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-xs">
               <Bot className="w-5 h-5 text-white" />
             </div>
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-slate-900"></span>
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 ring-2 ring-white" />
             </span>
           </div>
 
           <div>
             <div className="flex items-center gap-1.5">
-              <h3 className="font-bold text-sm tracking-tight text-white">
-                HabitHero Companion
+              <h3 className="font-bold text-sm tracking-tight text-slate-900">
+                HabitHero AI Companion
               </h3>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                AI + Tools
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                Gemini Tools
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 flex items-center gap-1">
-              <Radio className="w-3 h-3 text-emerald-400" />
-              Powered by Gemini Function Calling & MongoDB
+            <p className="text-[11px] text-slate-500 flex items-center gap-1">
+              <span>Autonomous accountability & habit adaptation</span>
             </p>
           </div>
         </div>
 
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          aria-label="Close companion drawer"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          aria-label="Close companion chat"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Fetch.ai ASI:One Sync Sub-bar */}
-      <div className="px-4 py-2 bg-slate-800 text-[11px] text-slate-300 flex items-center justify-between border-b border-slate-700">
-        <div className="flex items-center gap-1.5 truncate">
-          <span className="font-semibold text-emerald-400">Agent Status:</span>
-          <span className="text-[10px] text-slate-300">
-            Real Backend Tools Connected
-          </span>
-        </div>
+      {/* Protocol Sub-bar */}
+      <div className="px-5 py-2 bg-slate-50 text-[11px] text-slate-600 flex items-center justify-between border-b border-slate-200">
+        <span className="font-medium text-slate-700 truncate mr-2">
+          AgentChatProtocol 0.3.0 Live • MongoDB Connected
+        </span>
         <a 
           href="https://asi1.ai/chat" 
           target="_blank" 
           rel="noreferrer"
-          className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 hover:underline"
+          className="text-emerald-700 hover:underline font-semibold flex items-center gap-0.5 shrink-0"
         >
-          <span>ASI:One Protocol</span>
-          <ExternalLink className="w-3 h-3" />
+          <span>asi1.ai</span>
+          <ExternalLink className="w-2.5 h-2.5" />
         </a>
       </div>
 
-      {/* Chat Messages Body */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
+      {/* Messages Body */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50">
         {messages.map(msg => {
           const isUser = msg.sender === 'user';
 
@@ -142,27 +159,27 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
               className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[88%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed shadow-xs ${
+                className={`max-w-[90%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed ${
                   isUser
-                    ? 'bg-slate-900 text-white rounded-br-none'
-                    : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-subtle'
+                    ? 'bg-slate-900 text-white rounded-tr-xs shadow-xs'
+                    : 'bg-white border border-slate-200 text-slate-800 rounded-tl-xs shadow-card'
                 }`}
               >
                 {!isUser && (
-                  <div className="flex items-center gap-1 mb-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                  <div className="flex items-center gap-1 mb-1 text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">
                     <Sparkles className="w-3 h-3 text-emerald-600" />
-                    HabitHero AI Companion
+                    <span>HabitHero Companion</span>
                   </div>
                 )}
 
                 <p className="whitespace-pre-wrap">{msg.content}</p>
 
-                {/* Tool Executions Badge if present */}
+                {/* MongoDB Action Tool Executions */}
                 {msg.toolExecutions && msg.toolExecutions.length > 0 && (
                   <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
                       <Wrench className="w-3 h-3 text-emerald-600" />
-                      Actions Executed in MongoDB:
+                      Database Tool Actions:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {msg.toolExecutions.map((t, idx) => (
@@ -171,13 +188,13 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
                             t.success
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : 'bg-red-50 text-red-800 border-red-200'
+                              : 'bg-amber-50 text-amber-800 border-amber-200'
                           }`}
                         >
                           {t.success ? (
                             <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
                           ) : (
-                            <AlertCircle className="w-2.5 h-2.5 text-red-600" />
+                            <AlertCircle className="w-2.5 h-2.5 text-amber-600" />
                           )}
                           <code>{t.tool}</code>
                         </span>
@@ -186,14 +203,14 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
                   </div>
                 )}
 
-                {/* Action Proposal if attached to message */}
+                {/* Action Proposal from Agent */}
                 {msg.actionProposal && (
-                  <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200/90 text-amber-950 space-y-2">
+                  <div className="mt-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
                       <Zap className="w-3.5 h-3.5 text-amber-600" />
                       <span>{msg.actionProposal.label}</span>
                     </div>
-                    <p className="text-[11px] text-amber-800 leading-tight">
+                    <p className="text-[11px] text-amber-900 leading-tight">
                       {msg.actionProposal.description}
                     </p>
 
@@ -201,7 +218,7 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
                       type="button"
                       disabled={msg.actionProposal.applied}
                       onClick={() => msg.actionProposal && onApplyProposal(msg.actionProposal)}
-                      className={`w-full py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                      className={`w-full py-1.5 px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
                         msg.actionProposal.applied
                           ? 'bg-emerald-600 text-white cursor-default'
                           : 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
@@ -227,14 +244,14 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
           );
         })}
 
-        {/* Typing / Tool Execution Indicator */}
+        {/* Typing / Thinking Indicator */}
         {(isSubmitting || isLoading) && (
-          <div className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-2xl rounded-bl-none w-64 shadow-subtle text-xs text-slate-600">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" />
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.2s]" />
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.4s]" />
-            <span className="text-[11px] font-medium text-emerald-800 ml-1">
-              Reasoning & executing tools...
+          <div className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-2xl rounded-tl-xs w-60 shadow-card text-xs text-slate-600">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce [animation-delay:0.15s]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-bounce [animation-delay:0.3s]" />
+            <span className="text-[11px] font-medium text-slate-700 ml-1">
+              Executing tool actions...
             </span>
           </div>
         )}
@@ -242,57 +259,51 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Suggested Action Chips */}
+      {/* Quick Prompt Chips */}
       <div className="p-2.5 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto text-xs no-scrollbar">
         <button
           onClick={() => handleQuickPrompt("What tasks do I have scheduled for today?")}
           disabled={isSubmitting || isLoading}
-          className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors disabled:opacity-50"
+          className="shrink-0 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors disabled:opacity-50"
         >
-          📋 Today's tasks
+          Today's tasks
         </button>
         <button
           onClick={() => handleQuickPrompt("I couldn't finish yesterday's task because I was busy. Can you adapt today's plan?")}
           disabled={isSubmitting || isLoading}
-          className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors disabled:opacity-50"
+          className="shrink-0 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors disabled:opacity-50"
         >
-          ⚡ Adapt plan (15m)
-        </button>
-        <button
-          onClick={() => handleQuickPrompt("I want to learn Java in 30 days with 25 minutes daily.")}
-          disabled={isSubmitting || isLoading}
-          className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors disabled:opacity-50"
-        >
-          🎯 Plan 30-Day Java
+          Adapt plan (15m)
         </button>
         <button
           onClick={() => handleQuickPrompt("How is my habit streak and consistency rate looking?")}
           disabled={isSubmitting || isLoading}
-          className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors disabled:opacity-50"
+          className="shrink-0 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors disabled:opacity-50"
         >
-          📊 Progress summary
+          Progress summary
         </button>
       </div>
 
       {/* Input Box */}
-      <form onSubmit={handleSubmit} className="p-3 bg-white border-t border-slate-200 flex items-center gap-2">
+      <form onSubmit={handleSubmit} className="p-3 sm:p-4 bg-white border-t border-slate-200 flex items-center gap-2">
         <input
           type="text"
           value={inputText}
           onChange={e => setInputText(e.target.value)}
           disabled={isSubmitting || isLoading}
-          placeholder="Message HabitHero Agent (creates goals, completes tasks, adapts plans)..."
-          className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder:text-slate-400 disabled:bg-slate-50"
+          placeholder="Message HabitHero Copilot..."
+          className="flex-1 px-3.5 py-2 rounded-lg border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent placeholder:text-slate-400 disabled:bg-slate-50"
         />
         <button
           type="submit"
           disabled={!inputText.trim() || isSubmitting || isLoading}
-          className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white transition-all shadow-sm"
-          aria-label="Send message"
+          className="p-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white transition-all shadow-xs"
+          aria-label="Send message to agent"
         >
           <Send className="w-4 h-4" />
         </button>
       </form>
     </div>
+    </>
   );
 };

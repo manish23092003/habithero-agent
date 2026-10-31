@@ -205,3 +205,4 @@ async def test_full_message_flow_with_live_backend():
     assert isinstance(reply, ChatMessage)
     assert len(reply.content) > 0
     assert len(reply.content[0].text) > 0
+

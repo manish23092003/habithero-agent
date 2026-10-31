@@ -3,15 +3,29 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply min-h-screen text-slate-800 bg-[#f8fafc];
+  html {
+    @apply antialiased scroll-smooth;
   }
+  body {
+    @apply min-h-screen text-slate-800 bg-[#f8fafc] font-sans;
+    selection-background-color: #d1fae5;
+  }
+  ::selection {
+    background-color: #d1fae5;
+    color: #064e3b;
+  }
+}
+
+/* Accessible focus visible utility */
+:focus-visible {
+  outline: 2px solid #059669;
+  outline-offset: 2px;
 }
 
 /* Custom scrollbars for clean UI */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -24,12 +38,12 @@
   background: #94a3b8;
 }
 
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.88; transform: scale(1.02); }
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
