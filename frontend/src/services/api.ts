@@ -269,6 +269,44 @@ class ApiService {
     };
   }
 
+  // --- Chat APIs ---
+  async sendChatMessage(message: string, conversationId?: string): Promise<{
+    reply: string;
+    conversationId: string;
+    toolsExecuted: any[];
+    actionProposal?: any;
+    apiKeyMissing?: boolean;
+  }> {
+    const res = await this.request<{
+      success: boolean;
+      data: {
+        reply: string;
+        conversationId: string;
+        toolsExecuted: any[];
+        actionProposal?: any;
+        apiKeyMissing?: boolean;
+      };
+    }>('/chat/message', {
+      method: 'POST',
+      body: JSON.stringify({ message, conversationId }),
+    });
+    return res.data;
+  }
+
+  async getChatConversations(): Promise<any[]> {
+    const res = await this.request<{ success: boolean; data: any[] }>('/chat/conversations');
+    return res.data;
+  }
+
+  async getChatConversation(id: string): Promise<{ conversation: any; messages: any[] }> {
+    const res = await this.request<{ success: boolean; data: { conversation: any; messages: any[] } }>(`/chat/conversations/${id}`);
+    return res.data;
+  }
+
+  async deleteChatConversation(id: string): Promise<void> {
+    await this.request(`/chat/conversations/${id}`, { method: 'DELETE' });
+  }
+
   async checkHealth(): Promise<boolean> {
     try {
       const res = await fetch(`${API_BASE_URL}/health`);

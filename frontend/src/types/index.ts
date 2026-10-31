@@ -67,6 +67,7 @@ export interface AgentMessage {
   content: string;
   timestamp: string;
   actionProposal?: ActionProposal;
+  toolExecutions?: Array<{ tool: string; success: boolean; data?: any; error?: string }>;
   protocolMetadata?: {
     protocol: 'fetchai_chat_v1';
     agentAddress?: string;

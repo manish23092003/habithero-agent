@@ -7,7 +7,10 @@ import {
   Zap, 
   Check, 
   Radio, 
-  ExternalLink
+  ExternalLink,
+  Wrench,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { AgentMessage, ActionProposal, DailyTask } from '../types';
 
@@ -15,9 +18,10 @@ interface AgentCompanionChatProps {
   isOpen: boolean;
   onClose: () => void;
   messages: AgentMessage[];
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string) => Promise<void> | void;
   onApplyProposal: (proposal: ActionProposal) => void;
   tasks: DailyTask[];
+  isLoading?: boolean;
 }
 
 export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
@@ -25,10 +29,11 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
   onClose,
   messages,
   onSendMessage,
-  onApplyProposal
+  onApplyProposal,
+  isLoading = false,
 }) => {
   const [inputText, setInputText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -39,35 +44,36 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
     if (isOpen) {
       scrollToBottom();
     }
-  }, [messages, isOpen, isTyping]);
+  }, [messages, isOpen, isSubmitting, isLoading]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isSubmitting || isLoading) return;
 
     const userQuery = inputText.trim();
     setInputText('');
-    onSendMessage(userQuery);
-
-    // Simulate Agent processing delay
-    setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
-    }, 900);
+    setIsSubmitting(true);
+    try {
+      await onSendMessage(userQuery);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleQuickPrompt = (prompt: string) => {
-    onSendMessage(prompt);
-    setIsTyping(true);
-    setTimeout(() => {
-      setIsTyping(false);
-    }, 800);
+  const handleQuickPrompt = async (prompt: string) => {
+    if (isSubmitting || isLoading) return;
+    setIsSubmitting(true);
+    try {
+      await onSendMessage(prompt);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[440px] bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-all duration-300">
+    <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[460px] bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-all duration-300">
       {/* Header */}
       <div className="p-4 border-b border-slate-200 bg-slate-900 text-white flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -87,12 +93,12 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
                 HabitHero Companion
               </h3>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                uAgent
+                AI + Tools
               </span>
             </div>
             <p className="text-[11px] text-slate-400 flex items-center gap-1">
               <Radio className="w-3 h-3 text-emerald-400" />
-              Fetch.ai Chat Protocol v1 • ASI:One
+              Powered by Gemini Function Calling & MongoDB
             </p>
           </div>
         </div>
@@ -109,9 +115,9 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
       {/* Fetch.ai ASI:One Sync Sub-bar */}
       <div className="px-4 py-2 bg-slate-800 text-[11px] text-slate-300 flex items-center justify-between border-b border-slate-700">
         <div className="flex items-center gap-1.5 truncate">
-          <span className="font-semibold text-emerald-400">Agent Address:</span>
-          <span className="font-mono text-[10px] text-slate-400 truncate max-w-[170px]">
-            agent1q2w8j9x7...fetch
+          <span className="font-semibold text-emerald-400">Agent Status:</span>
+          <span className="text-[10px] text-slate-300">
+            Real Backend Tools Connected
           </span>
         </div>
         <a 
@@ -120,7 +126,7 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
           rel="noreferrer"
           className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 hover:underline"
         >
-          <span>ASI:One</span>
+          <span>ASI:One Protocol</span>
           <ExternalLink className="w-3 h-3" />
         </a>
       </div>
@@ -136,7 +142,7 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
               className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed shadow-xs ${
+                className={`max-w-[88%] rounded-2xl p-3.5 text-xs sm:text-sm leading-relaxed shadow-xs ${
                   isUser
                     ? 'bg-slate-900 text-white rounded-br-none'
                     : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-subtle'
@@ -145,11 +151,40 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
                 {!isUser && (
                   <div className="flex items-center gap-1 mb-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
                     <Sparkles className="w-3 h-3 text-emerald-600" />
-                    HabitHero Accountability Agent
+                    HabitHero AI Companion
                   </div>
                 )}
 
                 <p className="whitespace-pre-wrap">{msg.content}</p>
+
+                {/* Tool Executions Badge if present */}
+                {msg.toolExecutions && msg.toolExecutions.length > 0 && (
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                      <Wrench className="w-3 h-3 text-emerald-600" />
+                      Actions Executed in MongoDB:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {msg.toolExecutions.map((t, idx) => (
+                        <span
+                          key={idx}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                            t.success
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : 'bg-red-50 text-red-800 border-red-200'
+                          }`}
+                        >
+                          {t.success ? (
+                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                          ) : (
+                            <AlertCircle className="w-2.5 h-2.5 text-red-600" />
+                          )}
+                          <code>{t.tool}</code>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Action Proposal if attached to message */}
                 {msg.actionProposal && (
@@ -192,12 +227,15 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
           );
         })}
 
-        {/* Typing Indicator */}
-        {isTyping && (
-          <div className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-2xl rounded-bl-none w-24 shadow-subtle">
+        {/* Typing / Tool Execution Indicator */}
+        {(isSubmitting || isLoading) && (
+          <div className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-2xl rounded-bl-none w-64 shadow-subtle text-xs text-slate-600">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" />
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.2s]" />
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.4s]" />
+            <span className="text-[11px] font-medium text-emerald-800 ml-1">
+              Reasoning & executing tools...
+            </span>
           </div>
         )}
 
@@ -207,22 +245,32 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
       {/* Suggested Action Chips */}
       <div className="p-2.5 bg-white border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto text-xs no-scrollbar">
         <button
-          onClick={() => handleQuickPrompt("I had a rough day. Can we reduce my Java task today?")}
-          className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors"
+          onClick={() => handleQuickPrompt("What tasks do I have scheduled for today?")}
+          disabled={isSubmitting || isLoading}
+          className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors disabled:opacity-50"
         >
-          ⚡ Adapt task to 15m
+          📋 Today's tasks
         </button>
         <button
-          onClick={() => handleQuickPrompt("I want to learn Python in 30 days")}
-          className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors"
+          onClick={() => handleQuickPrompt("I couldn't finish yesterday's task because I was busy. Can you adapt today's plan?")}
+          disabled={isSubmitting || isLoading}
+          className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors disabled:opacity-50"
         >
-          🎯 Plan 30-Day Python
+          ⚡ Adapt plan (15m)
         </button>
         <button
-          onClick={() => handleQuickPrompt("How does the Fetch.ai uAgent keep me accountable?")}
-          className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors"
+          onClick={() => handleQuickPrompt("I want to learn Java in 30 days with 25 minutes daily.")}
+          disabled={isSubmitting || isLoading}
+          className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors disabled:opacity-50"
         >
-          🤖 Fetch.ai details
+          🎯 Plan 30-Day Java
+        </button>
+        <button
+          onClick={() => handleQuickPrompt("How is my habit streak and consistency rate looking?")}
+          disabled={isSubmitting || isLoading}
+          className="shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors disabled:opacity-50"
+        >
+          📊 Progress summary
         </button>
       </div>
 
@@ -232,12 +280,13 @@ export const AgentCompanionChat: React.FC<AgentCompanionChatProps> = ({
           type="text"
           value={inputText}
           onChange={e => setInputText(e.target.value)}
-          placeholder="Message HabitHero Agent..."
-          className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder:text-slate-400"
+          disabled={isSubmitting || isLoading}
+          placeholder="Message HabitHero Agent (creates goals, completes tasks, adapts plans)..."
+          className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder:text-slate-400 disabled:bg-slate-50"
         />
         <button
           type="submit"
-          disabled={!inputText.trim()}
+          disabled={!inputText.trim() || isSubmitting || isLoading}
           className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white transition-all shadow-sm"
           aria-label="Send message"
         >

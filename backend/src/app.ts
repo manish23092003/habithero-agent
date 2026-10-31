@@ -5,6 +5,7 @@ import authRoutes from './routes/authRoutes.js';
 import goalRoutes from './routes/goalRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import checkInRoutes from './routes/checkInRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/goals', goalRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/checkins', checkInRoutes);
+app.use('/api/chat', chatRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

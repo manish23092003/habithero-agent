@@ -1,5 +1,6 @@
 import { app } from '../src/app.js';
 import { connectDB, disconnectDB } from '../src/config/db.js';
+import { ToolExecutor } from '../src/ai/toolExecutor.js';
 import http from 'http';
 
 interface TestResponse {
@@ -257,6 +258,126 @@ const runAllTests = async () => {
 
     const tasksAfterDelete = await makeRequest(server, 'GET', `/api/tasks?goalId=${goalId}`, undefined, tokenA);
     assert(tasksAfterDelete.body.data.length === 0, 'Cascade delete verified: tasks removed with goal');
+
+    // ==========================================
+    // PHASE 3: AI INTELLIGENCE & AGENT TOOLS TESTS
+    // ==========================================
+    console.log('\n--- TESTING PHASE 3 AI AGENT TOOLS & SCENARIOS ---');
+
+    // Scenario A: User asks to create a Java learning goal for 30 days
+    const toolGoalRes = await ToolExecutor.execute(userAId, 'create_goal', {
+      title: 'Learn Java in 30 Days',
+      tagline: 'Master OOP, Collections, and Spring Boot',
+      category: 'learning',
+      targetDays: 30,
+      dailyCommitmentMinutes: 30,
+    });
+    assert(toolGoalRes.success === true, 'Scenario A: Tool create_goal succeeds');
+    assert(toolGoalRes.data.goalId && toolGoalRes.data.initialTaskId, 'Scenario A: Goal and Day 1 task created in MongoDB');
+    const aiGoalId = toolGoalRes.data.goalId;
+    const aiTaskId = toolGoalRes.data.initialTaskId;
+
+    // Scenario B: User asks what tasks are scheduled today
+    const toolTasksRes = await ToolExecutor.execute(userAId, 'get_today_tasks', {});
+    assert(toolTasksRes.success === true, 'Scenario B: Tool get_today_tasks succeeds');
+    assert(toolTasksRes.data.length >= 1, 'Scenario B: Real tasks retrieved from MongoDB');
+
+    // Scenario C: User says they completed a task
+    const toolCompleteRes = await ToolExecutor.execute(userAId, 'complete_task', {
+      taskId: aiTaskId,
+      completed: true,
+    });
+    assert(toolCompleteRes.success === true, 'Scenario C: Tool complete_task succeeds');
+    assert(toolCompleteRes.data.status === 'completed' && toolCompleteRes.data.completedAt, 'Scenario C: Completion timestamp persisted to MongoDB');
+
+    // Scenario D: User says a task is too difficult / wants adaptation
+    // First create a challenging task to adapt
+    const toolCreateTaskRes = await ToolExecutor.execute(userAId, 'create_tasks', {
+      goalId: aiGoalId,
+      title: 'Java Concurrency & Thread Pools',
+      description: 'Implement ExecutorService with custom ThreadFactory',
+      durationMinutes: 45,
+      difficulty: 'challenging',
+      dayNumber: 2,
+    });
+    assert(toolCreateTaskRes.success === true, 'Tool create_tasks created new challenge task in MongoDB');
+    const challengeTaskId = toolCreateTaskRes.data.id;
+
+    // Adapt the task down to 15m
+    const toolAdaptRes = await ToolExecutor.execute(userAId, 'adapt_task', {
+      taskId: challengeTaskId,
+      newDurationMinutes: 15,
+      adaptationNote: '⚡ Scaled to 15m micro-sprint to keep momentum alive.',
+    });
+    assert(toolAdaptRes.success === true, 'Scenario D: Tool adapt_task succeeds');
+    assert(toolAdaptRes.data.durationMinutes === 15 && toolAdaptRes.data.status === 'adapted', 'Scenario D: Task scaled down to 15m in MongoDB');
+
+    // Test tool: update_goal
+    const toolUpdateGoalRes = await ToolExecutor.execute(userAId, 'update_goal', {
+      goalId: aiGoalId,
+      dailyCommitmentMinutes: 20,
+      adaptationNotice: 'Adjusted to 20m daily after check-in feedback',
+    });
+    assert(toolUpdateGoalRes.success === true && toolUpdateGoalRes.data.dailyCommitmentMinutes === 20, 'Tool update_goal modified goal in MongoDB');
+
+    // Test tool: adapt_habit_plan
+    const toolPlanAdaptRes = await ToolExecutor.execute(userAId, 'adapt_habit_plan', {
+      reason: 'busy',
+      targetMinutes: 15,
+      goalId: aiGoalId,
+    });
+    assert(toolPlanAdaptRes.success === true && toolPlanAdaptRes.data.newDurationMinutes === 15, 'Tool adapt_habit_plan adjusted pending tasks');
+
+    // Test tool: record_checkin
+    const toolCheckInRes = await ToolExecutor.execute(userAId, 'record_checkin', {
+      status: 'partial',
+      missedReason: 'tired',
+      reflection: 'Long day, completed 15m micro-session',
+      adaptTomorrow: true,
+    });
+    assert(toolCheckInRes.success === true && toolCheckInRes.data.status === 'partial', 'Tool record_checkin persisted check-in to MongoDB');
+
+    // Scenario E: User asks about their progress
+    const toolProgressRes = await ToolExecutor.execute(userAId, 'get_progress_summary', {});
+    assert(toolProgressRes.success === true, 'Scenario E: Tool get_progress_summary succeeds');
+    assert(typeof toolProgressRes.data.consistencyRate === 'string', 'Scenario E: Real consistency statistics retrieved from MongoDB');
+
+    // Scenario F: User B attempts to access or modify User A's data through tools
+    const toolUnauthorizedRes = await ToolExecutor.execute(tokenB ? regBRes.body.data.user.id : 'badId', 'complete_task', {
+      taskId: challengeTaskId,
+    });
+    assert(toolUnauthorizedRes.success === false, 'Scenario F: User B cannot complete User A task via tool (User Data Isolation)');
+
+    // Scenario G: Chat endpoint with missing/unconfigured Gemini API Key
+    // Tests that sending a message does not fake a response, stores conversation, and returns clear guidance
+    const chatMsgRes = await makeRequest(
+      server,
+      'POST',
+      '/api/chat/message',
+      { message: 'Hello HabitHero, what should I work on today?' },
+      tokenA
+    );
+    assert(chatMsgRes.status === 200, 'Scenario G: POST /api/chat/message responds without crashing');
+    assert(chatMsgRes.body.data.apiKeyMissing === true, 'Scenario G: Missing API key cleanly reported without fake AI generation');
+    assert(chatMsgRes.body.data.conversationId, 'Scenario G: Conversation created and saved in MongoDB');
+    const conversationId = chatMsgRes.body.data.conversationId;
+
+    // Chat Conversation List: GET /api/chat/conversations
+    const convListRes = await makeRequest(server, 'GET', '/api/chat/conversations', undefined, tokenA);
+    assert(convListRes.status === 200 && convListRes.body.data.length >= 1, 'GET /api/chat/conversations lists user conversations');
+
+    // Chat Conversation Detail: GET /api/chat/conversations/:id
+    const convDetailRes = await makeRequest(server, 'GET', `/api/chat/conversations/${conversationId}`, undefined, tokenA);
+    assert(convDetailRes.status === 200 && convDetailRes.body.data.messages.length >= 2, 'GET /api/chat/conversations/:id retrieves conversation messages');
+
+    // Scenario F (Part 2): User B cannot access User A's conversation
+    const userBAccessConv = await makeRequest(server, 'GET', `/api/chat/conversations/${conversationId}`, undefined, tokenB);
+    assert(userBAccessConv.status === 404, 'Scenario F: User B cannot access User A conversation (404 Isolation)');
+
+    // Delete conversation: DELETE /api/chat/conversations/:id
+    const deleteConvRes = await makeRequest(server, 'DELETE', `/api/chat/conversations/${conversationId}`, undefined, tokenA);
+    assert(deleteConvRes.status === 200 && deleteConvRes.body.success === true, 'DELETE /api/chat/conversations/:id deletes conversation');
+
   } catch (err: any) {
     console.error('Test execution error:', err);
     failed++;

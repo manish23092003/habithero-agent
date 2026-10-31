@@ -247,8 +247,11 @@ export const App: React.FC = () => {
     );
   };
 
-  // Send message to Agent companion
-  const handleSendMessage = (text: string) => {
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
+  const [isChatAiLoading, setIsChatAiLoading] = useState(false);
+
+  // Send message to Agent companion (Real AI + Tools)
+  const handleSendMessage = async (text: string) => {
     const userMsg: AgentMessage = {
       id: `msg-${Date.now()}`,
       sender: 'user',
@@ -258,71 +261,72 @@ export const App: React.FC = () => {
 
     setMessages(prev => [...prev, userMsg]);
 
-    setTimeout(() => {
-      let agentReply: AgentMessage;
-      const lower = text.toLowerCase();
+    if (isBackendConnected && currentUser) {
+      setIsChatAiLoading(true);
+      try {
+        const res = await api.sendChatMessage(text, activeConversationId);
+        setActiveConversationId(res.conversationId);
 
-      if (lower.includes('adapt') || lower.includes('busy') || lower.includes('rough') || lower.includes('reduce')) {
-        agentReply = {
+        const agentReply: AgentMessage = {
           id: `msg-${Date.now() + 1}`,
           sender: 'agent',
-          content: "Understood! When life gets hectic, forcing an unrealistic 30–45 minute session leads to skipping and guilt. I've formulated a 15-minute high-yield micro-exercise for you so you maintain full streak credit with zero burnout.",
+          content: res.reply,
           timestamp: 'Just now',
-          actionProposal: {
-            type: 'reduce_time',
-            label: 'Switch Today to 15-Minute Micro Sprint',
-            description: 'Reduces task time to 15 mins while keeping your 5-day streak intact.',
-            impactMinutes: 15,
-            applied: false,
-          },
+          toolExecutions: res.toolsExecuted,
+          actionProposal: res.actionProposal,
           protocolMetadata: {
             protocol: 'fetchai_chat_v1',
             agentAddress: 'agent1qv09h2z...fetch',
             verifiedOnAsi1: true,
           },
         };
-      } else if (lower.includes('database') || lower.includes('mongodb') || lower.includes('backend') || lower.includes('auth')) {
-        agentReply = {
+
+        setMessages(prev => [...prev, agentReply]);
+
+        // Reflect database mutations performed by tools on the dashboard in real time
+        if (res.toolsExecuted && res.toolsExecuted.length > 0) {
+          const [updatedGoals, updatedTasks] = await Promise.all([
+            api.getGoals(),
+            api.getTodayTasks(),
+          ]);
+          if (updatedGoals.length > 0) setGoals(updatedGoals);
+          if (updatedTasks.length > 0) setTasks(updatedTasks);
+        }
+      } catch (err: any) {
+        const errorReply: AgentMessage = {
           id: `msg-${Date.now() + 1}`,
           sender: 'agent',
-          content: currentUser
-            ? `Your account (${currentUser.email}) is connected directly to our Node.js + Express backend and MongoDB database. All your goals, tasks, and check-ins are securely isolated and persisted!`
-            : "HabitHero backend is live! You can click 'Sign In' in the navbar to register or use our one-click demo account to persist all your habit progress to MongoDB.",
+          content: `Communication error: ${err.message}`,
           timestamp: 'Just now',
-          protocolMetadata: {
-            protocol: 'fetchai_chat_v1',
-            agentAddress: 'agent1qv09h2z...fetch',
-            verifiedOnAsi1: true,
-          },
         };
-      } else if (lower.includes('fetch.ai') || lower.includes('asi1') || lower.includes('agentverse') || lower.includes('uagent')) {
-        agentReply = {
-          id: `msg-${Date.now() + 1}`,
-          sender: 'agent',
-          content: "HabitHero is built natively with Fetch.ai uAgents & Python 3.12. Using the Fetch.ai Chat Protocol v1 and Agentverse Mailbox, I act as an autonomous decentralized companion. In Phase 4 & 5, our uAgent will connect directly with our MongoDB backend!",
-          timestamp: 'Just now',
-          protocolMetadata: {
-            protocol: 'fetchai_chat_v1',
-            agentAddress: 'agent1qv09h2z...fetch',
-            verifiedOnAsi1: true,
-          },
-        };
-      } else {
-        agentReply = {
-          id: `msg-${Date.now() + 1}`,
-          sender: 'agent',
-          content: `I've noted that! My job is to keep you consistent every single day. Let me know if you need to adapt today's plan, review your roadmap, or record a quick reflection.`,
-          timestamp: 'Just now',
-          protocolMetadata: {
-            protocol: 'fetchai_chat_v1',
-            agentAddress: 'agent1qv09h2z...fetch',
-            verifiedOnAsi1: true,
-          },
-        };
+        setMessages(prev => [...prev, errorReply]);
+      } finally {
+        setIsChatAiLoading(false);
       }
+    } else {
+      // Offline / guest mode fallback
+      setTimeout(() => {
+        let agentReply: AgentMessage;
+        const lower = text.toLowerCase();
 
-      setMessages(prev => [...prev, agentReply]);
-    }, 600);
+        if (lower.includes('sign in') || lower.includes('login') || lower.includes('account')) {
+          agentReply = {
+            id: `msg-${Date.now() + 1}`,
+            sender: 'agent',
+            content: "Click 'Sign In' in the navigation bar to log in with our one-click test account (Alex Hero) or create your own profile. That activates real MongoDB persistence and AI tool execution!",
+            timestamp: 'Just now',
+          };
+        } else {
+          agentReply = {
+            id: `msg-${Date.now() + 1}`,
+            sender: 'agent',
+            content: "You are currently in preview mode. Click 'Sign In' in the navbar to connect your session to our Node/Express backend and enable real AI function calling on your MongoDB data!",
+            timestamp: 'Just now',
+          };
+        }
+        setMessages(prev => [...prev, agentReply]);
+      }, 500);
+    }
   };
 
   // Add new goal & kickoff task (MongoDB persisted)
@@ -550,6 +554,7 @@ export const App: React.FC = () => {
         onSendMessage={handleSendMessage}
         onApplyProposal={handleApplyProposal}
         tasks={tasks}
+        isLoading={isChatAiLoading}
       />
 
       {/* New Goal Creation Modal */}
