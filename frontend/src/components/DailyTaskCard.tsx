@@ -162,3 +162,4 @@ export const DailyTaskCard: React.FC<DailyTaskCardProps> = ({
     </div>
   );
 };
+

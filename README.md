@@ -17,3 +17,4 @@ HabitHero is an AI-powered accountability companion designed for students and yo
 - [ ] **Phase 5**: Connect Web Application & Fetch.ai Agent
 - [ ] **Phase 6**: Agentverse registration & ASI:One testing
 - [ ] **Phase 7**: Deployment, testing & hackathon submission
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   INITIAL_GOALS, 
   INITIAL_TASKS, 
@@ -13,6 +13,7 @@ import {
   ActionProposal, 
   CheckInRecord 
 } from './types';
+import { api, AuthUser } from './services/api';
 import { Navbar } from './components/Navbar';
 import { HeroBanner } from './components/HeroBanner';
 import { DailyActionFeed } from './components/DailyActionFeed';
@@ -21,77 +22,162 @@ import { ConsistencyTracker } from './components/ConsistencyTracker';
 import { AgentCompanionChat } from './components/AgentCompanionChat';
 import { NewGoalModal } from './components/NewGoalModal';
 import { DailyCheckInModal } from './components/DailyCheckInModal';
+import { AuthModal } from './components/AuthModal';
 import { FetchAiProtocolBanner } from './components/FetchAiProtocolBanner';
 import { triggerStreakMilestoneConfetti } from './utils/confetti';
+import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 
 export const App: React.FC = () => {
-  // Local state with localStorage hydration
-  const [goals, setGoals] = useState<Goal[]>(() => {
-    const saved = localStorage.getItem('habithero_goals');
-    return saved ? JSON.parse(saved) : INITIAL_GOALS;
-  });
+  // Authentication & Server state
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isBackendConnected, setIsBackendConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  const [tasks, setTasks] = useState<DailyTask[]>(() => {
-    const saved = localStorage.getItem('habithero_tasks');
-    return saved ? JSON.parse(saved) : INITIAL_TASKS;
-  });
-
-  const [stats, setStats] = useState<UserStats>(() => {
-    const saved = localStorage.getItem('habithero_stats');
-    return saved ? JSON.parse(saved) : INITIAL_STATS;
-  });
-
+  // App core state
+  const [goals, setGoals] = useState<Goal[]>(INITIAL_GOALS);
+  const [tasks, setTasks] = useState<DailyTask[]>(INITIAL_TASKS);
+  const [stats, setStats] = useState<UserStats>(INITIAL_STATS);
   const [messages, setMessages] = useState<AgentMessage[]>(() => {
     const saved = localStorage.getItem('habithero_messages');
     return saved ? JSON.parse(saved) : INITIAL_MESSAGES;
   });
 
+  // UI state
   const [activeTab, setActiveTab] = useState<'today' | 'goals' | 'analytics'>('today');
   const [isNewGoalOpen, setIsNewGoalOpen] = useState(false);
   const [isCheckInOpen, setIsCheckInOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // Sync to local storage
-  useEffect(() => {
-    localStorage.setItem('habithero_goals', JSON.stringify(goals));
-  }, [goals]);
-
-  useEffect(() => {
-    localStorage.setItem('habithero_tasks', JSON.stringify(tasks));
-  }, [tasks]);
-
-  useEffect(() => {
-    localStorage.setItem('habithero_stats', JSON.stringify(stats));
-  }, [stats]);
-
+  // Sync messages locally
   useEffect(() => {
     localStorage.setItem('habithero_messages', JSON.stringify(messages));
   }, [messages]);
 
-  // Toggle complete task
-  const handleToggleComplete = (taskId: string) => {
+  // Load data from Backend MongoDB or fallback
+  const loadBackendData = useCallback(async () => {
+    setIsLoading(true);
+    setApiError(null);
+
+    try {
+      const isHealthy = await api.checkHealth();
+      setIsBackendConnected(isHealthy);
+
+      if (!isHealthy) {
+        // Fallback to local storage / demo seed data
+        const savedGoals = localStorage.getItem('habithero_goals');
+        const savedTasks = localStorage.getItem('habithero_tasks');
+        const savedStats = localStorage.getItem('habithero_stats');
+        if (savedGoals) setGoals(JSON.parse(savedGoals));
+        if (savedTasks) setTasks(JSON.parse(savedTasks));
+        if (savedStats) setStats(JSON.parse(savedStats));
+        setIsLoading(false);
+        return;
+      }
+
+      // Check current user session
+      let user: AuthUser | null = null;
+      try {
+        user = await api.getMe();
+        setCurrentUser(user);
+      } catch {
+        setCurrentUser(null);
+      }
+
+      if (user) {
+        // Fetch user's actual MongoDB data
+        const [dbGoals, dbTasks] = await Promise.all([
+          api.getGoals(),
+          api.getTodayTasks(),
+        ]);
+
+        if (dbGoals.length > 0) {
+          setGoals(dbGoals);
+        } else {
+          // If fresh user with no goals, keep sample template or offer kickoff
+          setGoals(INITIAL_GOALS);
+        }
+
+        if (dbTasks.length > 0) {
+          setTasks(dbTasks);
+        } else {
+          setTasks(INITIAL_TASKS);
+        }
+      } else {
+        // Guest mode / not logged in
+        const savedGoals = localStorage.getItem('habithero_goals');
+        const savedTasks = localStorage.getItem('habithero_tasks');
+        if (savedGoals) setGoals(JSON.parse(savedGoals));
+        if (savedTasks) setTasks(JSON.parse(savedTasks));
+      }
+    } catch (err: any) {
+      console.warn('API sync warning:', err.message);
+      setApiError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBackendData();
+  }, [loadBackendData]);
+
+  // Handle Auth success
+  const handleAuthSuccess = (user: AuthUser) => {
+    setCurrentUser(user);
+    loadBackendData();
+  };
+
+  // Handle Logout
+  const handleLogout = () => {
+    api.logout();
+    setCurrentUser(null);
+    setGoals(INITIAL_GOALS);
+    setTasks(INITIAL_TASKS);
+  };
+
+  // Toggle complete task (MongoDB persisted)
+  const handleToggleComplete = async (taskId: string) => {
+    const targetTask = tasks.find(t => t.id === taskId);
+    if (!targetTask) return;
+    const nowCompleted = targetTask.status !== 'completed';
+
+    // Optimistic UI update
     setTasks(prevTasks =>
       prevTasks.map(t => {
         if (t.id !== taskId) return t;
-        const nowCompleted = t.status !== 'completed';
         return {
           ...t,
           status: nowCompleted ? 'completed' : 'pending',
           completedAt: nowCompleted
             ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : undefined
+            : undefined,
         };
       })
     );
 
     setStats(prevStats => ({
       ...prevStats,
-      totalCompletedTasks: prevStats.totalCompletedTasks + 1
+      totalCompletedTasks: prevStats.totalCompletedTasks + 1,
     }));
+
+    // Persist to MongoDB if connected and authenticated
+    if (isBackendConnected && currentUser) {
+      try {
+        await api.completeTask(taskId, nowCompleted);
+      } catch (err: any) {
+        console.error('Failed to persist task completion to MongoDB:', err.message);
+      }
+    } else {
+      localStorage.setItem('habithero_tasks', JSON.stringify(tasks));
+    }
   };
 
-  // Quick adapt task directly from card
-  const handleQuickAdapt = (taskId: string) => {
+  // Quick adapt task directly from card (MongoDB persisted)
+  const handleQuickAdapt = async (taskId: string) => {
+    const adaptationNote = '⚡ Adapted: Shortened to 15 min sprint to protect your consistency streak.';
+
     setTasks(prevTasks =>
       prevTasks.map(t => {
         if (t.id !== taskId) return t;
@@ -99,10 +185,23 @@ export const App: React.FC = () => {
           ...t,
           durationMinutes: 15,
           status: 'adapted',
-          adaptationNote: '⚡ Adapted: Shortened to 15 min sprint to protect your consistency streak.'
+          adaptationNote,
         };
       })
     );
+
+    // Persist to MongoDB if connected
+    if (isBackendConnected && currentUser) {
+      try {
+        await api.updateTask(taskId, {
+          durationMinutes: 15,
+          status: 'adapted',
+          adaptationNote,
+        });
+      } catch (err: any) {
+        console.error('Failed to persist task adaptation to MongoDB:', err.message);
+      }
+    }
 
     const companionNotice: AgentMessage = {
       id: `msg-${Date.now()}`,
@@ -112,15 +211,15 @@ export const App: React.FC = () => {
       protocolMetadata: {
         protocol: 'fetchai_chat_v1',
         agentAddress: 'agent1qv09h2z...fetch',
-        verifiedOnAsi1: true
-      }
+        verifiedOnAsi1: true,
+      },
     };
 
     setMessages(prev => [...prev, companionNotice]);
   };
 
   // Apply action proposal from agent chat
-  const handleApplyProposal = (proposal: ActionProposal) => {
+  const handleApplyProposal = async (proposal: ActionProposal) => {
     setTasks(prevTasks =>
       prevTasks.map(t => {
         if (t.goalId === 'goal-java-30' || proposal.taskId === t.id) {
@@ -128,7 +227,7 @@ export const App: React.FC = () => {
             ...t,
             durationMinutes: proposal.impactMinutes || 15,
             status: 'adapted',
-            adaptationNote: '⚡ Adapted via Fetch.ai Companion conversation'
+            adaptationNote: '⚡ Adapted via Fetch.ai Companion conversation',
           };
         }
         return t;
@@ -140,7 +239,7 @@ export const App: React.FC = () => {
         if (m.actionProposal && m.actionProposal.label === proposal.label) {
           return {
             ...m,
-            actionProposal: { ...m.actionProposal, applied: true }
+            actionProposal: { ...m.actionProposal, applied: true },
           };
         }
         return m;
@@ -154,12 +253,11 @@ export const App: React.FC = () => {
       id: `msg-${Date.now()}`,
       sender: 'user',
       content: text,
-      timestamp: 'Just now'
+      timestamp: 'Just now',
     };
 
     setMessages(prev => [...prev, userMsg]);
 
-    // Intelligent reactive agent response
     setTimeout(() => {
       let agentReply: AgentMessage;
       const lower = text.toLowerCase();
@@ -175,73 +273,84 @@ export const App: React.FC = () => {
             label: 'Switch Today to 15-Minute Micro Sprint',
             description: 'Reduces task time to 15 mins while keeping your 5-day streak intact.',
             impactMinutes: 15,
-            applied: false
+            applied: false,
           },
           protocolMetadata: {
             protocol: 'fetchai_chat_v1',
             agentAddress: 'agent1qv09h2z...fetch',
-            verifiedOnAsi1: true
-          }
+            verifiedOnAsi1: true,
+          },
+        };
+      } else if (lower.includes('database') || lower.includes('mongodb') || lower.includes('backend') || lower.includes('auth')) {
+        agentReply = {
+          id: `msg-${Date.now() + 1}`,
+          sender: 'agent',
+          content: currentUser
+            ? `Your account (${currentUser.email}) is connected directly to our Node.js + Express backend and MongoDB database. All your goals, tasks, and check-ins are securely isolated and persisted!`
+            : "HabitHero backend is live! You can click 'Sign In' in the navbar to register or use our one-click demo account to persist all your habit progress to MongoDB.",
+          timestamp: 'Just now',
+          protocolMetadata: {
+            protocol: 'fetchai_chat_v1',
+            agentAddress: 'agent1qv09h2z...fetch',
+            verifiedOnAsi1: true,
+          },
         };
       } else if (lower.includes('fetch.ai') || lower.includes('asi1') || lower.includes('agentverse') || lower.includes('uagent')) {
         agentReply = {
           id: `msg-${Date.now() + 1}`,
           sender: 'agent',
-          content: "HabitHero is built natively with Fetch.ai uAgents & Python 3.12. Using the Fetch.ai Chat Protocol v1 and Agentverse Mailbox, I act as an autonomous decentralized companion. You can chat with me here or discover me on ASI:One (https://asi1.ai/chat) with agent address `agent1qv09h2z6k08m9v7...`!",
+          content: "HabitHero is built natively with Fetch.ai uAgents & Python 3.12. Using the Fetch.ai Chat Protocol v1 and Agentverse Mailbox, I act as an autonomous decentralized companion. In Phase 4 & 5, our uAgent will connect directly with our MongoDB backend!",
           timestamp: 'Just now',
           protocolMetadata: {
             protocol: 'fetchai_chat_v1',
             agentAddress: 'agent1qv09h2z...fetch',
-            verifiedOnAsi1: true
-          }
-        };
-      } else if (lower.includes('java') || lower.includes('streak') || lower.includes('progress')) {
-        agentReply = {
-          id: `msg-${Date.now() + 1}`,
-          sender: 'agent',
-          content: `You are currently on Day 8 of your 30-Day Java Blueprint with an active 5-day streak! You are currently mastering Phase 2: Object-Oriented Architecture (Classes, encapsulation, and methods). Keep this cadence and you'll hit Phase 3 (Collections & Streams) in 8 days!`,
-          timestamp: 'Just now',
-          protocolMetadata: {
-            protocol: 'fetchai_chat_v1',
-            agentAddress: 'agent1qv09h2z...fetch',
-            verifiedOnAsi1: true
-          }
-        };
-      } else if (lower.includes('python') || lower.includes('learn') || lower.includes('plan')) {
-        agentReply = {
-          id: `msg-${Date.now() + 1}`,
-          sender: 'agent',
-          content: `I'd love to help you build a new habit! Click the '+ New Goal' button or let me know: What is your target, how many days (e.g. 21 or 30 days), and how many minutes can you dedicate daily? I'll build your structured phased roadmap.`,
-          timestamp: 'Just now',
-          protocolMetadata: {
-            protocol: 'fetchai_chat_v1',
-            agentAddress: 'agent1qv09h2z...fetch',
-            verifiedOnAsi1: true
-          }
+            verifiedOnAsi1: true,
+          },
         };
       } else {
         agentReply = {
           id: `msg-${Date.now() + 1}`,
           sender: 'agent',
-          content: `I've noted that. As your HabitHero companion, my mission is to eliminate the gap between setting goals and actually achieving them. Let me know if you need to adapt today's plan, review your streak, or break down a tough task!`,
+          content: `I've noted that! My job is to keep you consistent every single day. Let me know if you need to adapt today's plan, review your roadmap, or record a quick reflection.`,
           timestamp: 'Just now',
           protocolMetadata: {
             protocol: 'fetchai_chat_v1',
             agentAddress: 'agent1qv09h2z...fetch',
-            verifiedOnAsi1: true
-          }
+            verifiedOnAsi1: true,
+          },
         };
       }
 
       setMessages(prev => [...prev, agentReply]);
-    }, 700);
+    }, 600);
   };
 
-  // Add new goal & kickoff task
-  const handleAddGoal = (newGoal: Goal, initialTask: DailyTask) => {
-    setGoals(prev => [newGoal, ...prev]);
-    setTasks(prev => [initialTask, ...prev]);
+  // Add new goal & kickoff task (MongoDB persisted)
+  const handleAddGoal = async (newGoal: Goal, initialTask: DailyTask) => {
     triggerStreakMilestoneConfetti();
+
+    if (isBackendConnected && currentUser) {
+      try {
+        const created = await api.createGoal({
+          title: newGoal.title,
+          tagline: newGoal.tagline,
+          category: newGoal.category,
+          targetDays: newGoal.targetDays,
+          dailyCommitmentMinutes: newGoal.dailyCommitmentMinutes,
+        });
+        setGoals(prev => [created.goal, ...prev]);
+        setTasks(prev => [created.initialTask, ...prev]);
+      } catch (err: any) {
+        console.error('Failed to create goal in MongoDB:', err.message);
+        setGoals(prev => [newGoal, ...prev]);
+        setTasks(prev => [initialTask, ...prev]);
+      }
+    } else {
+      setGoals(prev => [newGoal, ...prev]);
+      setTasks(prev => [initialTask, ...prev]);
+      localStorage.setItem('habithero_goals', JSON.stringify([newGoal, ...goals]));
+      localStorage.setItem('habithero_tasks', JSON.stringify([initialTask, ...tasks]));
+    }
 
     const welcomeMsg: AgentMessage = {
       id: `msg-${Date.now()}`,
@@ -251,15 +360,15 @@ export const App: React.FC = () => {
       protocolMetadata: {
         protocol: 'fetchai_chat_v1',
         agentAddress: 'agent1qv09h2z...fetch',
-        verifiedOnAsi1: true
-      }
+        verifiedOnAsi1: true,
+      },
     };
 
     setMessages(prev => [...prev, welcomeMsg]);
   };
 
-  // Submit daily check-in
-  const handleSubmitCheckIn = (
+  // Submit daily check-in (MongoDB persisted)
+  const handleSubmitCheckIn = async (
     record: Partial<CheckInRecord>,
     shouldAdaptTomorrow: boolean
   ) => {
@@ -269,12 +378,12 @@ export const App: React.FC = () => {
         ...prev,
         currentStreak: prev.currentStreak + 1,
         longestStreak: Math.max(prev.longestStreak, prev.currentStreak + 1),
-        consistencyRate: Math.min(100, prev.consistencyRate + 2)
+        consistencyRate: Math.min(100, prev.consistencyRate + 2),
       }));
     } else {
       setStats(prev => ({
         ...prev,
-        recoveryResilienceScore: Math.min(100, prev.recoveryResilienceScore + 1)
+        recoveryResilienceScore: Math.min(100, prev.recoveryResilienceScore + 1),
       }));
 
       if (shouldAdaptTomorrow) {
@@ -285,11 +394,27 @@ export const App: React.FC = () => {
                   ...t,
                   durationMinutes: Math.min(t.durationMinutes, 15),
                   status: 'adapted',
-                  adaptationNote: `⚡ Adapted for recovery based on check-in (${record.missedReason})`
+                  adaptationNote: `⚡ Adapted for recovery based on check-in (${record.missedReason})`,
                 }
               : t
           )
         );
+      }
+    }
+
+    // Persist to MongoDB if connected
+    if (isBackendConnected && currentUser) {
+      try {
+        await api.createCheckIn({
+          status: record.status || 'great',
+          completedTaskCount: record.completedTaskCount || 0,
+          totalTaskCount: record.totalTaskCount || 0,
+          missedReason: record.missedReason,
+          reflection: record.reflection,
+          adaptTomorrow: shouldAdaptTomorrow,
+        });
+      } catch (err: any) {
+        console.error('Failed to persist check-in to MongoDB:', err.message);
       }
     }
   };
@@ -309,57 +434,90 @@ export const App: React.FC = () => {
         onToggleChat={() => setIsChatOpen(!isChatOpen)}
         isChatOpen={isChatOpen}
         unresolvedAdaptation={hasUnresolvedAdaptation}
+        currentUser={currentUser}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onLogout={handleLogout}
+        isBackendConnected={isBackendConnected}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Hero Banner with progress & adaptive alert */}
-        <HeroBanner
-          tasks={tasks}
-          onOpenCheckIn={() => setIsCheckInOpen(true)}
-          onOpenCompanionChat={() => setIsChatOpen(true)}
-          currentStreak={stats.currentStreak}
-        />
-
-        {/* Tab-driven Views */}
-        {activeTab === 'today' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left 2 Cols: Action Feed */}
-            <div className="lg:col-span-2 space-y-6">
-              <DailyActionFeed
-                tasks={tasks}
-                onToggleComplete={handleToggleComplete}
-                onQuickAdapt={handleQuickAdapt}
-                onOpenNewGoal={() => setIsNewGoalOpen(true)}
-                onOpenCheckIn={() => setIsCheckInOpen(true)}
-              />
+        {/* API Error / Reconnect Banner if needed */}
+        {apiError && (
+          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{apiError} — Using local demo fallback.</span>
             </div>
-
-            {/* Right 1 Col: Fetch.ai uAgent & Quick Companion Snapshot */}
-            <div className="space-y-6">
-              <FetchAiProtocolBanner
-                onOpenCompanionChat={() => setIsChatOpen(true)}
-              />
-              <ConsistencyTracker stats={stats} />
-            </div>
+            <button
+              onClick={loadBackendData}
+              className="inline-flex items-center gap-1 font-bold text-amber-900 hover:underline"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Retry Sync
+            </button>
           </div>
         )}
 
-        {activeTab === 'goals' && (
-          <GoalPlansView
-            goals={goals}
-            onOpenNewGoal={() => setIsNewGoalOpen(true)}
-            onSelectGoalForChat={() => setIsChatOpen(true)}
-          />
-        )}
-
-        {activeTab === 'analytics' && (
-          <div className="space-y-6">
-            <ConsistencyTracker stats={stats} />
-            <FetchAiProtocolBanner
+        {/* Loading State Spinner */}
+        {isLoading ? (
+          <div className="p-16 flex flex-col items-center justify-center space-y-3">
+            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+            <p className="text-xs text-slate-500 font-medium">
+              Synchronizing with HabitHero MongoDB Backend...
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Hero Banner with progress & adaptive alert */}
+            <HeroBanner
+              tasks={tasks}
+              onOpenCheckIn={() => setIsCheckInOpen(true)}
               onOpenCompanionChat={() => setIsChatOpen(true)}
+              currentStreak={stats.currentStreak}
             />
-          </div>
+
+            {/* Tab-driven Views */}
+            {activeTab === 'today' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left 2 Cols: Action Feed */}
+                <div className="lg:col-span-2 space-y-6">
+                  <DailyActionFeed
+                    tasks={tasks}
+                    onToggleComplete={handleToggleComplete}
+                    onQuickAdapt={handleQuickAdapt}
+                    onOpenNewGoal={() => setIsNewGoalOpen(true)}
+                    onOpenCheckIn={() => setIsCheckInOpen(true)}
+                  />
+                </div>
+
+                {/* Right 1 Col: Fetch.ai uAgent & Quick Companion Snapshot */}
+                <div className="space-y-6">
+                  <FetchAiProtocolBanner
+                    onOpenCompanionChat={() => setIsChatOpen(true)}
+                  />
+                  <ConsistencyTracker stats={stats} />
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'goals' && (
+              <GoalPlansView
+                goals={goals}
+                onOpenNewGoal={() => setIsNewGoalOpen(true)}
+                onSelectGoalForChat={() => setIsChatOpen(true)}
+              />
+            )}
+
+            {activeTab === 'analytics' && (
+              <div className="space-y-6">
+                <ConsistencyTracker stats={stats} />
+                <FetchAiProtocolBanner
+                  onOpenCompanionChat={() => setIsChatOpen(true)}
+                />
+              </div>
+            )}
+          </>
         )}
       </main>
 
@@ -367,16 +525,19 @@ export const App: React.FC = () => {
       <footer className="border-t border-slate-200 bg-white py-6 mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div>
-            <span className="font-bold text-slate-700">HabitHero</span> — Built for Stranger Builds Halloween Hackathon (Fetch.ai Track).
+            <span className="font-bold text-slate-700">HabitHero</span> — Node.js & Express API + MongoDB Connected (Phase 2).
           </div>
           <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1 font-semibold text-emerald-700">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              MongoDB Connected
+            </span>
+            <span>•</span>
             <a href="https://asi1.ai/chat" target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline">
               ASI:One Platform
             </a>
             <span>•</span>
             <span>Fetch.ai Chat Protocol v1</span>
-            <span>•</span>
-            <span>Python 3.12 uAgent</span>
           </div>
         </div>
       </footer>
@@ -405,6 +566,13 @@ export const App: React.FC = () => {
         onSubmitCheckIn={handleSubmitCheckIn}
         completedTasksCount={completedTasksCount}
         totalTasksCount={tasks.length}
+      />
+
+      {/* Auth Modal (Sign In / Register / Demo) */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
       />
     </div>
   );

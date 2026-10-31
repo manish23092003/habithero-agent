@@ -21,3 +21,6 @@ agent.private_key
 
 # Playwright MCP artifacts
 .playwright-mcp/
+
+# Local database files
+backend/data/

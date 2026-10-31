@@ -24,3 +24,4 @@ export const triggerStreakMilestoneConfetti = () => {
     confetti({ ...defaults, particleCount, origin: { x: 0.8, y: Math.random() - 0.2 } });
   }, 250);
 };
+

@@ -82,3 +82,4 @@ export interface UserStats {
   weeklyCompleted: number[];
   recoveryResilienceScore: number;
 }
+
