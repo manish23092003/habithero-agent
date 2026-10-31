@@ -8,7 +8,9 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "tsx tests/api.test.ts"
+    "test:api": "tsx tests/api.test.ts",
+    "test:agent": "tsx tests/agent.test.ts",
+    "test": "tsx tests/api.test.ts && tsx tests/agent.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.32.0",
