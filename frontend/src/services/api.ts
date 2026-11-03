@@ -1,7 +1,38 @@
 import { Goal, DailyTask, CheckInRecord, GoalCategory, UserAnalytics } from '../types';
 
 const isProd = Boolean((import.meta as any).env?.PROD);
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || (isProd ? '/api' : 'http://localhost:5000/api');
+
+/**
+ * Normalizes the API base URL to ensure:
+ * 1. Trailing slashes are stripped.
+ * 2. It always ends with '/api' (handling inputs with or without '/api').
+ * 3. Fallbacks to '/api' in production or 'http://localhost:5000/api' in development.
+ */
+export const normalizeApiBaseUrl = (rawUrl?: string | null, isProduction: boolean = isProd): string => {
+  const fallback = isProduction ? '/api' : 'http://localhost:5000/api';
+  if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.trim()) {
+    return fallback;
+  }
+  const trimmed = rawUrl.trim().replace(/\/+$/, '');
+  if (!trimmed) {
+    return fallback;
+  }
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+};
+
+/**
+ * Resolves full request URL, safely preventing duplicate '/api/api' paths
+ * if an endpoint already includes the '/api' prefix.
+ */
+export const resolveApiUrl = (baseUrl: string, endpoint: string): string => {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const finalPath = baseUrl.endsWith('/api') && cleanEndpoint.startsWith('/api/')
+    ? cleanEndpoint.slice(4)
+    : cleanEndpoint;
+  return `${baseUrl}${finalPath}`;
+};
+
+const API_BASE_URL = normalizeApiBaseUrl((import.meta as any).env?.VITE_API_URL, isProd);
 
 export interface AuthUser {
   id: string;
@@ -46,8 +77,11 @@ class ApiService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = resolveApiUrl(API_BASE_URL, cleanEndpoint);
+
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetch(url, {
         ...options,
         headers,
       });
@@ -55,7 +89,17 @@ class ApiService {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        if (response.status === 401 && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/register') && !endpoint.startsWith('/auth/forgot-password') && !endpoint.startsWith('/auth/reset-password')) {
+        const isAuthEndpoint =
+          cleanEndpoint.startsWith('/auth/login') ||
+          cleanEndpoint.startsWith('/auth/register') ||
+          cleanEndpoint.startsWith('/auth/forgot-password') ||
+          cleanEndpoint.startsWith('/auth/reset-password') ||
+          cleanEndpoint.startsWith('/api/auth/login') ||
+          cleanEndpoint.startsWith('/api/auth/register') ||
+          cleanEndpoint.startsWith('/api/auth/forgot-password') ||
+          cleanEndpoint.startsWith('/api/auth/reset-password');
+
+        if (response.status === 401 && !isAuthEndpoint) {
           this.removeToken();
         }
         throw new Error(data.error || `Request failed with status ${response.status}`);
@@ -475,7 +519,8 @@ class ApiService {
 
   async checkHealth(): Promise<boolean> {
     try {
-      const res = await fetch(`${API_BASE_URL}/health`);
+      const url = resolveApiUrl(API_BASE_URL, '/health');
+      const res = await fetch(url);
       return res.ok;
     } catch {
       return false;
