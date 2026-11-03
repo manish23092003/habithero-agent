@@ -31,6 +31,10 @@ const UserSchema = new Schema<UserDocument>(
       required: [true, 'Password hash is required'],
       select: false, // Do not expose password hash in queries by default
     },
+    passwordChangedAt: {
+      type: Date,
+      select: true,
+    },
   },
   {
     timestamps: true,
@@ -38,4 +42,3 @@ const UserSchema = new Schema<UserDocument>(
 );
 
 export const User = mongoose.model<UserDocument>('User', UserSchema);
-

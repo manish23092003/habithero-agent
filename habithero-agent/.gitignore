@@ -13,6 +13,8 @@ __pycache__/
 
 # Sensitive files & Agent Keys
 .env
+.env.production
+.env.staging
 *.agent.key
 *.seed
 

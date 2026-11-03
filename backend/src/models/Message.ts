@@ -91,5 +91,9 @@ const MessageSchema = new Schema<MessageDocument>(
   }
 );
 
+// Compound indexes for fast message lookup by conversation
+MessageSchema.index({ conversationId: 1, createdAt: 1 });
+MessageSchema.index({ userId: 1, createdAt: -1 });
+
 export const Message = mongoose.model<MessageDocument>('Message', MessageSchema);
 

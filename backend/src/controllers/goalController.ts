@@ -9,7 +9,8 @@ export class GoalController {
         res.status(401).json({ success: false, error: 'Unauthorized' });
         return;
       }
-      const result = await GoalService.createGoal(req.user.id, req.body);
+      const idempotencyKey = (req.body?.idempotencyKey || req.headers['idempotency-key'] || req.headers['x-idempotency-key']) as string | undefined;
+      const result = await GoalService.createGoal(req.user.id, { ...req.body, idempotencyKey });
       res.status(201).json({
         success: true,
         message: 'Goal plan created successfully',
@@ -96,7 +97,8 @@ export class GoalController {
         message: result.message,
       });
     } catch (error: any) {
-      res.status(400).json({
+      const isNotFound = error.message.includes('not found') || error.message.includes('access denied');
+      res.status(isNotFound ? 404 : 400).json({
         success: false,
         error: error.message || 'Failed to delete goal',
       });

@@ -7,35 +7,49 @@
     @apply antialiased scroll-smooth;
   }
   body {
-    @apply min-h-screen text-slate-800 bg-[#f8fafc] font-sans;
-    selection-background-color: #d1fae5;
+    @apply min-h-screen text-[#26352D] bg-[#F7F7F2] font-sans;
   }
   ::selection {
-    background-color: #d1fae5;
-    color: #064e3b;
+    background-color: #DCEBDD;
+    color: #183c2e;
   }
 }
 
-/* Accessible focus visible utility */
+/* Accessible focus visible utility matching primary brand */
 :focus-visible {
-  outline: 2px solid #059669;
+  outline: 2px solid #245C46;
   outline-offset: 2px;
 }
 
 /* Custom scrollbars for clean UI */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #D8DDD5;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #A9B3A8;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -46,4 +60,3 @@
     scroll-behavior: auto !important;
   }
 }
-

@@ -8,9 +8,14 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test:api": "tsx tests/api.test.ts",
-    "test:agent": "tsx tests/agent.test.ts",
-    "test": "tsx tests/api.test.ts && tsx tests/agent.test.ts"
+    "test:api": "cross-env NODE_ENV=test tsx tests/api.test.ts",
+    "test:agent": "cross-env NODE_ENV=test tsx tests/agent.test.ts",
+    "test:groq": "cross-env NODE_ENV=test tsx tests/groq.test.ts",
+    "test:analytics": "cross-env NODE_ENV=test tsx --test tests/analytics.test.ts",
+    "test:reset": "cross-env NODE_ENV=test tsx --test tests/passwordReset.test.ts",
+    "test:hardening": "cross-env NODE_ENV=test tsx --test tests/productionHardening.test.ts",
+    "test:reliability": "cross-env NODE_ENV=test tsx tests/reliability.test.ts",
+    "test": "cross-env NODE_ENV=test tsx tests/api.test.ts && cross-env NODE_ENV=test tsx tests/agent.test.ts && cross-env NODE_ENV=test tsx tests/groq.test.ts && cross-env NODE_ENV=test tsx --test tests/analytics.test.ts && cross-env NODE_ENV=test tsx --test tests/passwordReset.test.ts && cross-env NODE_ENV=test tsx --test tests/productionHardening.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.32.0",
@@ -18,9 +23,11 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "groq-sdk": "^1.6.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb-memory-server": "^10.1.2",
     "mongoose": "^8.7.3",
+    "resend": "^6.37.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -29,6 +36,7 @@
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.8.1",
+    "cross-env": "^10.1.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }

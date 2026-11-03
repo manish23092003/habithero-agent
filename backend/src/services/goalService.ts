@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import { Goal } from '../models/Goal.js';
 import { Task } from '../models/Task.js';
+import { IdempotencyService } from './idempotencyService.js';
 import { IHabitPhase, GoalCategory, GoalStatus } from '../types/index.js';
 
 export interface CreateGoalDTO {
@@ -10,6 +11,7 @@ export interface CreateGoalDTO {
   targetDays?: number;
   dailyCommitmentMinutes?: number;
   planOutline?: IHabitPhase[];
+  idempotencyKey?: string;
 }
 
 export interface UpdateGoalDTO {
@@ -26,73 +28,90 @@ export interface UpdateGoalDTO {
 
 export class GoalService {
   static async createGoal(userId: string, dto: CreateGoalDTO) {
-    const targetDays = dto.targetDays || 30;
-    const dailyMinutes = dto.dailyCommitmentMinutes || 25;
-
-    // Generate phased plan if not supplied
-    let planOutline = dto.planOutline;
-    if (!planOutline || planOutline.length === 0) {
-      planOutline = [
-        {
-          phaseNumber: 1,
-          title: 'Foundational Consistency',
-          focus: `Establish frictionless daily habit with ${dailyMinutes}m sessions`,
-          dayRange: `Days 1-${Math.max(3, Math.round(targetDays * 0.25))}`,
-          tasksPlanned: Math.max(3, Math.round(targetDays * 0.25)),
-        },
-        {
-          phaseNumber: 2,
-          title: 'Competency & Sustained Flow',
-          focus: 'Deepening mechanics and progressive repetition',
-          dayRange: `Days ${Math.max(4, Math.round(targetDays * 0.25) + 1)}-${Math.round(targetDays * 0.55)}`,
-          tasksPlanned: Math.max(4, Math.round(targetDays * 0.3)),
-        },
-        {
-          phaseNumber: 3,
-          title: 'Synthesis & Real Output',
-          focus: 'Autonomous execution and long-term consolidation',
-          dayRange: `Days ${Math.round(targetDays * 0.55) + 1}-${targetDays}`,
-          tasksPlanned: Math.round(targetDays * 0.45),
-        },
-      ];
-    }
-
-    const goal = await Goal.create({
-      userId: new Types.ObjectId(userId),
+    return IdempotencyService.runWithIdempotency({
+      userId,
+      resourceType: 'goal',
       title: dto.title,
-      tagline: dto.tagline || `Achieve ${dto.title} through daily ${dailyMinutes}-minute actions.`,
-      category: dto.category || 'learning',
-      targetDays,
-      currentDay: 1,
-      dailyCommitmentMinutes: dailyMinutes,
-      streak: 0,
-      status: 'active',
-      planOutline,
-    });
+      idempotencyKey: dto.idempotencyKey,
+      execute: async () => {
+        const targetDays = dto.targetDays || 30;
+        const dailyMinutes = dto.dailyCommitmentMinutes || 25;
 
-    // Auto-create Day 1 task for the new goal
-    const initialTask = await Task.create({
-      userId: new Types.ObjectId(userId),
-      goalId: goal._id,
-      goalTitle: goal.title,
-      title: `Kickoff: Day 1 of ${goal.title}`,
-      description: `Complete your initial ${dailyMinutes}-minute focused session. Set up workspace and record day 1 key notes.`,
-      durationMinutes: dailyMinutes,
-      difficulty: 'easy',
-      status: 'pending',
-      dayNumber: 1,
-      scheduledFor: 'Today',
-      category: goal.category,
-    });
+        // Generate phased plan if not supplied
+        let planOutline = dto.planOutline;
+        if (!planOutline || planOutline.length === 0) {
+          planOutline = [
+            {
+              phaseNumber: 1,
+              title: 'Foundational Consistency',
+              focus: `Establish frictionless daily habit with ${dailyMinutes}m sessions`,
+              dayRange: `Days 1-${Math.max(3, Math.round(targetDays * 0.25))}`,
+              tasksPlanned: Math.max(3, Math.round(targetDays * 0.25)),
+            },
+            {
+              phaseNumber: 2,
+              title: 'Competency & Sustained Flow',
+              focus: 'Deepening mechanics and progressive repetition',
+              dayRange: `Days ${Math.max(4, Math.round(targetDays * 0.25) + 1)}-${Math.round(targetDays * 0.55)}`,
+              tasksPlanned: Math.max(4, Math.round(targetDays * 0.3)),
+            },
+            {
+              phaseNumber: 3,
+              title: 'Synthesis & Real Output',
+              focus: 'Autonomous execution and long-term consolidation',
+              dayRange: `Days ${Math.round(targetDays * 0.55) + 1}-${targetDays}`,
+              tasksPlanned: Math.round(targetDays * 0.45),
+            },
+          ];
+        }
 
-    return {
-      goal,
-      initialTask,
-    };
+        const goal = await Goal.create({
+          userId: new Types.ObjectId(userId),
+          title: dto.title,
+          tagline: dto.tagline || `Achieve ${dto.title} through daily ${dailyMinutes}-minute actions.`,
+          category: dto.category || 'learning',
+          targetDays,
+          currentDay: 1,
+          dailyCommitmentMinutes: dailyMinutes,
+          streak: 0,
+          status: 'active',
+          planOutline,
+        });
+
+        // Auto-create Day 1 task for the new goal
+        const initialTask = await Task.create({
+          userId: new Types.ObjectId(userId),
+          goalId: goal._id,
+          goalTitle: goal.title,
+          title: `Kickoff: Day 1 of ${goal.title}`,
+          description: `Complete your initial ${dailyMinutes}-minute focused session. Set up workspace and record day 1 key notes.`,
+          durationMinutes: dailyMinutes,
+          difficulty: 'easy',
+          status: 'pending',
+          dayNumber: 1,
+          scheduledFor: 'Today',
+          category: goal.category,
+        });
+
+        return {
+          goal,
+          initialTask,
+        };
+      },
+      retrieveById: async (goalId: string) => {
+        const goal = await Goal.findById(goalId);
+        if (!goal) return null;
+        const initialTask = await Task.findOne({ goalId: goal._id, userId: new Types.ObjectId(userId) });
+        return {
+          goal,
+          initialTask: initialTask || ({} as any),
+        };
+      },
+    });
   }
 
   static async getGoals(userId: string) {
-    return Goal.find({ userId: new Types.ObjectId(userId) }).sort({ createdAt: -1 });
+    return Goal.find({ userId: new Types.ObjectId(userId) }).sort({ createdAt: -1 }).lean();
   }
 
   static async getGoalById(userId: string, goalId: string) {
@@ -148,4 +167,3 @@ export class GoalService {
     return { success: true, message: 'Goal and linked tasks successfully deleted' };
   }
 }
-

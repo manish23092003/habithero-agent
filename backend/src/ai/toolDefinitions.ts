@@ -8,6 +8,20 @@ export interface FunctionDeclaration {
   };
 }
 
+export interface GroqToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: 'object';
+      properties: Record<string, any>;
+      required?: string[];
+    };
+  };
+}
+
+// 1. Google Gemini Tool Declarations (uppercase types)
 export const HABITHERO_TOOLS: FunctionDeclaration[] = [
   {
     name: 'create_goal',
@@ -234,3 +248,57 @@ export const HABITHERO_TOOLS: FunctionDeclaration[] = [
   },
 ];
 
+// Helper to convert uppercase Gemini types to standard JSON Schema types
+function convertToJsonSchemaType(geminiType: string): string {
+  switch (geminiType?.toUpperCase()) {
+    case 'STRING':
+      return 'string';
+    case 'NUMBER':
+    case 'INTEGER':
+      return 'number';
+    case 'BOOLEAN':
+      return 'boolean';
+    case 'ARRAY':
+      return 'array';
+    case 'OBJECT':
+    default:
+      return 'object';
+  }
+}
+
+function convertPropertiesToJsonSchema(properties: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(properties)) {
+    const prop: Record<string, any> = {
+      type: convertToJsonSchemaType(value.type),
+      description: value.description,
+    };
+    if (value.enum) {
+      prop.enum = value.enum;
+    }
+    if (value.items) {
+      prop.items = {
+        type: convertToJsonSchemaType(value.items.type),
+        ...(value.items.properties ? { properties: convertPropertiesToJsonSchema(value.items.properties) } : {}),
+      };
+    }
+    result[key] = prop;
+  }
+  return result;
+}
+
+// 2. Groq / OpenAI Compatible Function Definitions (lowercase JSON Schema)
+export const GROQ_HABITHERO_TOOLS: GroqToolDefinition[] = HABITHERO_TOOLS.map(tool => ({
+  type: 'function',
+  function: {
+    name: tool.name,
+    description: tool.description,
+    parameters: {
+      type: 'object',
+      properties: convertPropertiesToJsonSchema(tool.parameters.properties),
+      ...(tool.parameters.required && tool.parameters.required.length > 0
+        ? { required: tool.parameters.required }
+        : {}),
+    },
+  },
+}));

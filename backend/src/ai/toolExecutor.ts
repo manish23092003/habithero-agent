@@ -392,7 +392,7 @@ export class ToolExecutor {
 
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(t => t.status === 'completed').length;
-    const consistencyRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100;
+    const consistencyRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
     const maxStreak = goals.reduce((max, g) => Math.max(max, g.streak), 0);
 
     return {

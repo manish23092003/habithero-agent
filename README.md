@@ -1,607 +1,602 @@
-<div align="center">
+# HabitHero
 
-# ⚡ HabitHero
-### *Autonomous AI Accountability Companion & Habit Management SaaS*
+> **Don't just set goals. Actually achieve them.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
-[![React Router](https://img.shields.io/badge/React_Router-v7-CA4245?logo=reactrouter&logoColor=white)](https://reactrouter.com/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.0+-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![Groq](https://img.shields.io/badge/Groq-openai%2Fgpt--oss--120b-f55036?logo=groq&logoColor=white)](https://groq.com/)
 [![Fetch.ai](https://img.shields.io/badge/Fetch.ai-uAgents_0.26.1-blueviolet?logo=ai&logoColor=white)](https://fetch.ai/)
-[![Google Gemini](https://img.shields.io/badge/Google_Gemini-2.5_Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Tests Passing](https://img.shields.io/badge/Tests-63%20Passing-success?logo=checkmarx&logoColor=white)](https://github.com/manish23092003/habithero-agent)
+[![Backend Tests](https://img.shields.io/badge/Backend%20Tests-141%20Passing-success?logo=checkmarx&logoColor=white)](backend/tests/)
+[![Agent Tests](https://img.shields.io/badge/Agent%20Tests-10%20Passing-success?logo=pytest&logoColor=white)](habithero-agent/tests/)
 
-**Don't just set goals. Actually achieve them.**
-
-HabitHero is a production-grade, multi-tenant habit accountability SaaS application. It converts ambitious development targets into progressive 4-phase micro-commitments, tracks streak continuity, autonomously adapts daily workload when fatigue strikes, and interfaces with decentralized agent networks via **Fetch.ai uAgents** and **ASI:One**.
-
-[Key Features](#-key-features) • [Application Screenshots](#-application-screenshots) • [Architecture](#-system-architecture) • [Route Structure](#-application-route-structure) • [Fetch.ai Integration](#-fetchai-agent-integration) • [Quickstart](#-quickstart-guide) • [API Reference](#-api-endpoints-reference)
+HabitHero is an autonomous AI accountability companion and habit management platform. It turns ambitious goals into structured 4-phase micro-commitments, tracks streak continuity using the *"Never Miss Twice"* behavioral principle, autonomously recalibrates daily workload when life gets busy, and interfaces directly with decentralized agent ecosystems via Fetch.ai and ASI:One.
 
 ---
 
-</div>
+## Table of Contents
 
-## 💡 The Problem: Why Passive Habit Trackers Fail
-
-Most habit tracking applications are static checklists that measure failure without providing recovery mechanisms:
-
-1. **The "All-or-Nothing" Trap**: Missing a single 45-minute gym or study session breaks momentum, resulting in cognitive guilt and permanent abandonment.
-2. **Rigid, Inflexible Horizons**: Schedules in real life are unpredictable. Static apps do not recalibrate when work deadlines, exams, or illness occur.
-3. **Passive Record-Keeping**: Checking a red "X" offers zero proactive coaching or automated workload scaling.
-4. **Walled Data Silos**: Traditional trackers lock user progress inside closed proprietary ecosystems without autonomous agent interoperability.
-
----
-
-## ✨ The Solution: What HabitHero Delivers
-
-HabitHero functions as an **adaptive behavioral partner**, combining behavioral science principles (*"Never Miss Twice"*) with dual-tier AI reasoning:
-
-* **🎯 4-Phase Progressive Roadmaps**: Habits are decomposed into 4 calibrated stages (*Foundation*, *Rhythm*, *Depth*, and *Automaticity*) to eliminate startup friction.
-* **⚡ Dynamic Workload Calibration**: On exhausting days, HabitHero's AI autonomously halves task duration (e.g. from 30 min down to 10 min) to preserve streak continuity.
-* **🤖 Autonomous Fetch.ai Companion**: Chat with HabitHero via the decentralized **ASI:One** network using Fetch.ai's `AgentChatProtocol` v0.3.0 and Agentverse Mailbox.
-* **📊 Multi-Tenant Cloud Architecture**: Strict JWT-based tenancy isolation in MongoDB ensures that user goals, tasks, reflection check-ins, and dialogue threads are permanently compartmentalized.
-* **📈 Rhythm Matrix & Resilience Metrics**: Dedicated analytics track consistency rates, bounce-back resilience scores, and day-of-week rhythm stability.
-
----
-
-## 📸 Application Screenshots
-
-> All screenshots captured directly from the live, running application.
-
-### Public Marketing Website (`/`)
-![HabitHero Public Landing Page](docs/screenshots/landing-page.png)
-*High-converting public landing page highlighting value proposition, interactive dashboard previews, core behavioral principles, and transparent systems architecture.*
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [System Architecture](#system-architecture)
+- [Technology Stack](#technology-stack)
+- [Repository Structure](#repository-structure)
+- [Local Development Setup](#local-development-setup)
+- [Environment Variables](#environment-variables)
+- [API Documentation](#api-documentation)
+- [AI Architecture & Tool Calling](#ai-architecture--tool-calling)
+- [Fetch.ai uAgent & ASI:One](#fetchai-uagent--asione)
+- [Automated Testing](#automated-testing)
+- [Production Deployment Guide](#production-deployment-guide)
+  - [Render (Backend Deployment)](#render-backend-deployment)
+  - [Vercel (Frontend Deployment)](#vercel-frontend-deployment)
+  - [Fetch.ai Agent Deployment](#fetchai-agent-deployment)
+  - [Resend Email Domain Setup](#resend-email-domain-setup)
+- [Security & Data Protection](#security--data-protection)
+- [Roadmap](#roadmap)
+- [License](#license)
 
 ---
 
-### Secure Authentication & One-Click Demo Portal (`/login`, `/register`)
-<p align="center">
-  <img src="docs/screenshots/login.png" width="49%" alt="HabitHero Login Page" />
-  <img src="docs/screenshots/register.png" width="49%" alt="HabitHero Register Page" />
-</p>
-*Left: Authentication gateway with password visibility toggle and 1-click evaluation access. Right: Registration with instant redirect to the 3-step onboarding wizard.*
+## Overview
+
+Most habit trackers act as passive logs: when life intervenes and a user misses a target, the application records a broken streak, triggering guilt and abandonment.
+
+HabitHero functions as an active behavioral partner:
+1. **Decomposes Ambition**: Translates a broad target into progressive milestone phases.
+2. **Adapts Under Strain**: When energy is low or schedules conflict, the AI automatically rescales task duration (e.g. from 45 minutes down to 15 minutes) to protect the habit loop without breaking streak momentum.
+3. **Dual Access**: Accessible through a React SaaS web application or via natural conversation on decentralized chat protocols through Fetch.ai and ASI:One.
 
 ---
 
-### Authenticated Workspace Dashboard (`/app/dashboard`)
-![HabitHero Authenticated Dashboard](docs/screenshots/dashboard.png)
-*SaaS workspace dashboard featuring personalized greeting, active momentum flame badge, primary daily focus milestone, and quick check-in modal.*
+## Key Features
+
+- **4-Phase Habit Roadmaps**: Automatic milestone structuring across Foundation, Rhythm, Depth, and Automaticity phases.
+- **Daily Action Feed & Focus Task**: Highlights today's primary commitment with completion toggles, optimistic updates, and completion timestamps.
+- **Adaptive Workload Rescaling**: 10 autonomous backend AI tools dynamically calibrate upcoming tasks when a user records a check-in indicating difficulty or missed sessions.
+- **Daily Check-In & Evening Reflection**: Guided check-in modal capturing execution quality (Great, Partial, Missed), energy levels, and reflection notes.
+- **Rhythm Matrix & Consistency Analytics**: Visual monthly calendar alongside metrics tracking active streaks, overall consistency rate, category distribution, and bounce-back resilience.
+- **Multi-Tenant User Isolation**: Strict user-scoped querying on all database operations; cross-tenant access attempts return HTTP 404 or 403.
+- **Enterprise Account Security**: Password hashing with bcrypt, stateless JWT session tokens, and cryptographic password reset with 15-minute SHA-256 tokens and IP/User-Agent auditing via Resend.
+- **Decentralized Agent Protocol**: Native Fetch.ai `AgentChatProtocol` v0.3.0 compliance with Agentverse mailbox support for ASI:One chat interaction.
+- **Production-Hardened Infrastructure**: Active database health probes (`/api/health`), credential sanitization in all logs, connection pool optimization, and strict multi-origin CORS validation.
 
 ---
 
-### Phased Habit Roadmaps & Filtering (`/app/habits`)
-![HabitHero Habit Roadmaps](docs/screenshots/habits.png)
-*Central habit management workspace with real-time search, category filters, 4-phase milestone progress bars, active streak counters, and habit deletion safeguards.*
-
----
-
-### Rhythm Calendar & Daily Execution Inspector (`/app/calendar`)
-![HabitHero Rhythm Calendar](docs/screenshots/calendar.png)
-*Interactive monthly matrix displaying execution quality indicators (Great, Partial, Missed) alongside a daily inspector panel for scheduled and completed milestones.*
-
----
-
-### Progress & Resilience Analytics (`/app/analytics`)
-![HabitHero Progress Analytics](docs/screenshots/analytics.png)
-*Dedicated behavioral analytics dashboard with consistency scoring, active vs. longest streaks, bounce-back resilience percentage, and cognitive domain allocation.*
-
----
-
-### AI Companion & Fetch.ai Agent Integration (`/app/ai-companion`)
-![HabitHero AI Companion Interface](docs/screenshots/ai-companion.png)
-*Full-page AI accountability companion with live Gemini 2.5 Flash function calling (`create_goal`, `get_today_tasks`, `adapt_plan`), Fetch.ai protocol verification badge, and 1-click adaptation proposal buttons.*
-
----
-
-### Mobile Responsive Workspace
-<p align="center">
-  <img src="docs/screenshots/mobile-dashboard.png" width="45%" alt="HabitHero Mobile Responsive Dashboard" />
-</p>
-*Fully responsive workspace featuring persistent mobile bottom navigation bar, touch-friendly task completion toggles, and compact metrics.*
-
----
-
-## 🏛️ Public Website vs. Authenticated Application Experience
-
-HabitHero is architected into two distinct operational environments:
-
-```text
-┌────────────────────────────────────────────────────────────────────────┐
-│                   PUBLIC MARKETING SITE (PublicLayout)                 │
-│  / (Landing)    •    /features    •    /about    •    /forgot-password │
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │ (Login / Register / Demo)
-                                   ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                  ONBOARDING WIZARD (ProtectedRoute)                   │
-│  /onboarding (3-Step First-Time Experience: Focus Area -> Habit -> Time)│
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │ (Wizard Complete)
-                                   ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│               AUTHENTICATED APPLICATION WORKSPACE (AppLayout)          │
-│  • /app/dashboard      • /app/habits           • /app/habits/new       │
-│  • /app/habits/:id     • /app/calendar         • /app/analytics        │
-│  • /app/ai-companion   • /app/profile          • /app/settings         │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-1. **Public Marketing Site**:
-   - Clean, marketing-focused header and SaaS footer.
-   - Publicly accessible without requiring credentials.
-   - Explains the core behavioral science, 4-phase roadmap architecture, and transparent technology stack.
-2. **Authenticated SaaS Workspace**:
-   - Collapsible desktop left sidebar and mobile bottom navigation dock.
-   - Dynamic top header featuring breadcrumb path, live streak flame counter, and user profile dropdown.
-   - Direct access to Habit Roadmaps, Rhythm Calendar, Analytics, AI Companion, Profile settings, and System Diagnostics.
-
----
-
-## 🔒 Authentication & Protected Route Guards
-
-HabitHero enforces security and user tenancy using React Router v7 and Express middleware:
-
-* **`ProtectedRoute`**: Inspects the current session via `AuthContext`. If unauthenticated, it records the requested destination in `location.state.from` and redirects the user to `/login`. Once authenticated, the user is forwarded directly to their intended page.
-* **`PublicOnlyRoute`**: Prevents authenticated users from viewing `/login` or `/register`, immediately routing them to `/app/dashboard`.
-* **Tenant Isolation**: Every database collection (`Goal`, `DailyTask`, `CheckIn`, `Conversation`) is indexed and filtered by the user's private `userId` derived from their verified JWT. Foreign accounts receive `404 Not Found` or `403 Forbidden` responses.
-* **Password Security**: Passwords are cryptographically salted and hashed using `bcryptjs` (cost factor 10) before persistence. Password hashes are excluded from all API responses.
-
----
-
-## 🏗️ System Architecture
-
-HabitHero employs a decoupled three-tier architecture connecting the React frontend, Node.js orchestration layer, Google Gemini reasoning engine, MongoDB storage, and the Fetch.ai decentralized agent network:
+## System Architecture
 
 ```mermaid
 flowchart TD
-    subgraph Clients["Frontend Clients"]
-        PublicPages["Public Pages<br/>(/, /features, /about)"]
-        AuthPages["Auth Pages<br/>(/login, /register)"]
-        AppWorkspace["App Workspace<br/>(/app/dashboard, /app/habits, /app/calendar...)"]
+    subgraph Clients["User Touchpoints"]
+        WebApp["React 18 SPA<br/>(Tailwind CSS, Vite)"]
+        ASI["ASI:One Chat / Fetch.ai User"]
     end
 
-    subgraph RouterGuards["Client Route Protection"]
-        Router["React Router v7"]
-        AuthCtx["AuthContext (JWT State)"]
-        ProtRoute["ProtectedRoute Guard"]
+    subgraph EdgeRouting["Edge & Ingress Security"]
+        VercelEdge["Vercel Hosting<br/>(SPA Rewrites)"]
+        RenderAPI["Render Web Service<br/>(CORS Normalizer, /api/health)"]
     end
 
-    subgraph BackendAPI["Backend Orchestration (Node.js / Express)"]
-        JWTMiddleware["JWT Auth Middleware"]
-        AgentSecretMiddleware["x-agent-secret Guard"]
+    subgraph BackendApp["Node.js / Express API Server"]
+        AuthMiddleware["JWT Authentication & Token Revocation"]
+        AgentAuthGuard["x-agent-secret Header Guard"]
         
-        AuthCtrl["Auth Controller<br/>(/api/auth)"]
-        GoalsCtrl["Goals Controller<br/>(/api/goals)"]
-        TasksCtrl["Tasks Controller<br/>(/api/tasks)"]
-        CheckInsCtrl["CheckIns Controller<br/>(/api/checkins)"]
-        ChatCtrl["Chat Controller<br/>(/api/chat)"]
-        AgentCtrl["Agent Controller<br/>(/api/agent/chat)"]
+        Controllers["Modular Controllers<br/>(Auth, Goals, Tasks, CheckIns, Analytics, Chat)"]
+        
+        AIService["AI Orchestration Engine<br/>(AIService)"]
+        ToolExecutor["ToolExecutor<br/>(10 Scoped Actions)"]
+        EmailService["EmailService<br/>(Transactional Reset)"]
     end
 
-    subgraph AIServiceLayer["AI Reasoning Engine"]
-        GeminiService["AIService (@google/genai)"]
-        ToolRegistry["9 Autonomous Tool Declarations"]
-        ToolExecutor["ToolExecutor (Tenant Scoped)"]
-        GeminiFlash["Google Gemini 2.5 Flash API"]
+    subgraph Persistence["Persistent Storage Layer"]
+        Atlas[("MongoDB Atlas Cluster<br/>(Connection Pool max:25, min:2)")]
     end
 
-    subgraph FetchAINetwork["Fetch.ai Decentralized Agent Network"]
-        ASI["ASI:One User Interface"]
-        Mailbox["Agentverse Mailbox (v2 Long-polling)"]
-        uAgent["Python 3.12 uAgent (agent1qghes4...)"]
-        Almanac["Fetch.ai Almanac API (Manifest 0.3.0)"]
+    subgraph ExternalAI["AI Intelligence Providers"]
+        Groq["Groq Cloud API<br/>(openai/gpt-oss-120b)"]
+        Gemini["Google Gemini API<br/>(gemini-2.5-flash Fallback)"]
     end
 
-    subgraph DataTier["Data Persistence Layer"]
-        MongoDB[("MongoDB Database<br/>(Users, Goals, Tasks, CheckIns, Messages)")]
+    subgraph ExternalServices["External Infrastructure Services"]
+        Resend["Resend API<br/>(Transactional Email)"]
+        Agentverse["Agentverse Mailbox & Almanac"]
+        PythonAgent["Python 3.12 uAgent<br/>(AgentChatProtocol 0.3.0)"]
     end
 
-    %% Client Routing Connections
-    PublicPages --> Router
-    AuthPages --> Router
-    AppWorkspace --> ProtRoute --> Router
-    Router --> AuthCtx
+    %% Web App Flow
+    WebApp --> VercelEdge
+    VercelEdge -->|HTTPS REST with Bearer JWT| RenderAPI
+    RenderAPI --> AuthMiddleware
+    AuthMiddleware --> Controllers
 
-    %% API REST Connections
-    Router -->|REST with Bearer JWT| JWTMiddleware
-    JWTMiddleware --> AuthCtrl
-    JWTMiddleware --> GoalsCtrl
-    JWTMiddleware --> TasksCtrl
-    JWTMiddleware --> CheckInsCtrl
-    JWTMiddleware --> ChatCtrl
+    %% ASI:One Flow
+    ASI -->|ChatMessage v0.3.0| Agentverse
+    Agentverse <-->|Long-polling| PythonAgent
+    PythonAgent -->|POST /api/agent/chat with x-agent-secret| RenderAPI
+    RenderAPI --> AgentAuthGuard
+    AgentAuthGuard --> Controllers
 
-    %% Fetch.ai Agent Connections
-    ASI -->|ChatMessage| Mailbox
-    Mailbox <-->|Long-polling| uAgent
-    uAgent <-->|Manifest Registration| Almanac
-    uAgent -->|POST /api/agent/chat with x-agent-secret| AgentSecretMiddleware
-    AgentSecretMiddleware --> AgentCtrl
+    %% Backend Internals
+    Controllers <--> Atlas
+    Controllers --> AIService
+    Controllers --> EmailService
+    EmailService -->|HTTPS| Resend
 
-    %% AI Tool Execution
-    ChatCtrl --> GeminiService
-    AgentCtrl --> GeminiService
-    GeminiService <-->|Prompt + Tool Declarations| GeminiFlash
-    GeminiService -->|Function Calls| ToolExecutor
-    ToolExecutor --> ToolRegistry
-
-    %% Data Tier Connections
-    AuthCtrl <--> MongoDB
-    GoalsCtrl <--> MongoDB
-    TasksCtrl <--> MongoDB
-    CheckInsCtrl <--> MongoDB
-    ToolExecutor <--> MongoDB
+    AIService -->|Primary Function Calling| Groq
+    AIService -.->|Optional Rate-Limit Fallback| Gemini
+    Groq -->|Sequential Tool Invocations| ToolExecutor
+    Gemini -->|Tool Invocations| ToolExecutor
+    ToolExecutor <--> Atlas
 ```
 
 ---
 
-## 🗺️ Application Route Structure
+## Technology Stack
 
-| Route | Access Level | Layout Wrapper | Component | Purpose |
-|---|---|---|---|---|
-| `/` | Public | `PublicLayout` | `LandingPage` | Product landing page, value proposition, feature overview |
-| `/features` | Public | `PublicLayout` | `FeaturesPage` | 4-phase roadmaps, cognitive budget scaling, technical architecture |
-| `/about` | Public | `PublicLayout` | `AboutPage` | Behavioral psychology foundations ("Never Miss Twice") |
-| `/forgot-password` | Public | `PublicLayout` | `ForgotPasswordPage` | Account recovery request form |
-| `/login` | Public Only | *None* | `LoginPage` | Email/password sign-in and 1-click evaluation demo access |
-| `/register` | Public Only | *None* | `RegisterPage` | Account registration with automatic redirection to onboarding |
-| `/onboarding` | Protected | *None* | `OnboardingPage` | 3-step first-time user wizard (focus area, habit setup, reminder) |
-| `/app/dashboard` | Protected | `AppLayout` | `DashboardPage` | Active streak metrics, daily focus task, and check-in prompt |
-| `/app/habits` | Protected | `AppLayout` | `HabitsPage` | Habit roadmap catalog, category filters, progress indicators |
-| `/app/habits/new` | Protected | `AppLayout` | `NewHabitPage` | 3-stage interactive habit creation wizard |
-| `/app/habits/:habitId` | Protected | `AppLayout` | `HabitDetailPage` | Phased roadmap details, associated task management, inline editor |
-| `/app/calendar` | Protected | `AppLayout` | `CalendarPage` | Monthly rhythm matrix with daily task and check-in inspector |
-| `/app/analytics` | Protected | `AppLayout` | `AnalyticsPage` | Consistency rate, streak longevity, resilience score, category distribution |
-| `/app/ai-companion` | Protected | `AppLayout` | `AICompanionPage` | Full-page AI accountability chat with Gemini tools and Fetch.ai status |
-| `/app/profile` | Protected | `AppLayout` | `ProfilePage` | Display name editor, tenant account ID, data isolation verification |
-| `/app/settings` | Protected | `AppLayout` | `SettingsPage` | Reminder time configuration, auto-recovery toggle, service diagnostics |
-| `*` | Public | *None* | `NotFoundPage` | Dedicated 404 page with navigation links |
-
----
-
-## 🌐 Fetch.ai Agent Integration
-
-HabitHero includes an autonomous Python uAgent communicating over the decentralized Fetch.ai network using the **`AgentChatProtocol` (version 0.3.0)**:
-
-* **Deterministic Agent Address**: `agent1qghes4q3u28wc48zeateraflnf3uadm3ygam56lwh2m5elxm407256zqkkw`
-* **Agentverse Mailbox**: Utilizes authenticated long-polling to receive incoming messages from Agentverse with HTTP 200 responses.
-* **Almanac Contract Registration**: Protocol manifests and chat capabilities are registered on the Fetch.ai Almanac for discovery on **ASI:One**.
-* **Zero-Mock Message Lifecycle**:
-  ```text
-  ASI:One User -> ChatMessage -> Agentverse -> HabitHero uAgent
-  HabitHero uAgent -> Instant ChatAcknowledgement -> User
-  HabitHero uAgent -> POST /api/agent/chat (with x-agent-secret) -> Node.js
-  Node.js -> Gemini Function Calling -> MongoDB Persistence
-  Node.js -> Formatted Response -> HabitHero uAgent -> ChatMessage Reply -> User
-  ```
+| Domain | Technology | Version | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | React | `^18.3.1` | Single-page application UI |
+| | TypeScript | `^5.6.3` | Type-safe component development |
+| | Vite | `^5.4.9` | High-performance bundling and development server |
+| | Tailwind CSS | `^3.4.14` | Design system styling and warm neutral design tokens |
+| | React Router | `^7.18.5` | Public and authenticated layout routing and guards |
+| | Lucide React | `^0.453.0` | Accessible iconography |
+| **Backend** | Node.js | `>=20.0.0` | Server runtime environment |
+| | Express | `^4.21.1` | REST API framework |
+| | TypeScript | `^5.6.3` | Backend type definitions and NodeNext module compilation |
+| | Mongoose | `^8.7.3` | MongoDB ODM with connection pooling and automated indexing |
+| | Zod | `^3.23.8` | Schema validation on API requests |
+| | jsonwebtoken | `^9.0.2` | Stateless HMAC-SHA256 bearer tokens |
+| | bcryptjs | `^2.4.3` | Salting and hashing passwords (cost factor 10) |
+| | Resend | `^6.37.0` | Transactional email delivery for password recovery |
+| **AI Layer** | Groq SDK | `^1.6.0` | Primary LLM engine running `openai/gpt-oss-120b` |
+| | Google GenAI | `^2.32.0` | Optional fallback provider running `gemini-2.5-flash` |
+| **Agent Layer** | Python | `3.12` | Runtime for autonomous Fetch.ai agent |
+| | uagents | `0.26.1` | Fetch.ai micro-agent framework |
+| | uagents-core | `0.4.12` | Official `AgentChatProtocol` 0.3.0 specification |
+| | aiohttp | `^3.9.0` | Async HTTP client communicating with Node.js backend |
+| **Database** | MongoDB Atlas | `>=7.0` | Document database for multi-tenant habit storage |
 
 ---
 
-## 🧠 Gemini AI Autonomous Tool Engine
-
-HabitHero provides Google Gemini with **9 custom tool declarations**, allowing the model to query, create, and adapt database records autonomously:
-
-| Tool | Parameters | Description |
-|---|---|---|
-| `create_goal` | `title`, `category`, `dailyCommitmentMinutes`, `targetDays` | Creates a goal in MongoDB and automatically schedules the kickoff Day 1 task. |
-| `get_today_tasks` | *(none)* | Queries all active tasks assigned to the user for the current date. |
-| `complete_task` | `taskId` | Marks a task as completed, timestamps completion, and increments the goal streak. |
-| `create_tasks` | `goalId`, `tasks: [{ title, durationMinutes, dayNumber }]` | Appends milestone or challenge tasks to a goal plan. |
-| `adapt_task` | `taskId`, `newDurationMinutes`, `adaptationNote` | Scales a task down to a 5–15 min micro-sprint when life gets busy. |
-| `update_goal` | `goalId`, `dailyCommitmentMinutes`, `adaptationNotice` | Modifies the target daily commitment and logs adaptation reason. |
-| `adapt_habit_plan` | `goalId`, `reason`, `targetMinutes` | Bulk-adapts upcoming pending tasks to maintain consistency without burnout. |
-| `record_checkin` | `status`, `missedReason`, `reflection`, `adaptTomorrow` | Persists daily reflection and flags plan adjustments for tomorrow. |
-| `get_progress_summary` | *(none)* | Calculates overall consistency rate, current streak, and completion statistics. |
-
----
-
-## 🛠️ Technology Stack
-
-| Layer | Technologies | Purpose |
-|---|---|---|
-| **Frontend Framework** | React 18.3, TypeScript 5.6, Vite 5.4 | Single-page application architecture and fast bundling |
-| **Routing & Navigation** | React Router v7.18 | Nested routing, public/app layout separation, route guards |
-| **Styling & UI Tokens** | Tailwind CSS 3.4, Lucide React, Canvas Confetti | Deliberate typography scale, warm neutral palettes, animations |
-| **Backend Framework** | Node.js 20+, Express.js 4.21, TypeScript 5.6 | RESTful APIs, multi-tenant middleware, service orchestration |
-| **Authentication** | JSON Web Tokens (`jsonwebtoken`), `bcryptjs` | Stateless session management, password hashing, route guards |
-| **Data Validation** | Zod 3.23 | Strict request payload validation on all mutation endpoints |
-| **Database & ODM** | MongoDB 7.0+, Mongoose 8.7 | Document database with user-isolated collections |
-| **In-Memory Fallback** | `mongodb-memory-server` 10.1 | Automatic zero-configuration database fallback for local dev |
-| **AI Reasoning Engine** | Google Gemini 2.5 Flash, `@google/genai` 2.32 | Natural language processing, function calling, workload adaptation |
-| **Autonomous Agent** | Python 3.12, Fetch.ai `uagents` 0.26.1, `aiohttp` | Decentralized agent runtime, `AgentChatProtocol` 0.3.0, Agentverse Mailbox |
-
----
-
-## 📁 Project Directory Structure
+## Repository Structure
 
 ```text
 hero-habit/
-├── backend/                        # Node.js & Express REST API Server
+├── backend/                             # Node.js & Express TypeScript Backend
 │   ├── src/
-│   │   ├── ai/                     # Gemini AI service, tool declarations, tool executor
-│   │   ├── config/                 # MongoDB connection & in-memory database fallback
-│   │   ├── controllers/            # Auth, Goal, Task, CheckIn, Chat & Agent controllers
-│   │   ├── middleware/             # JWT authentication & route security guards
-│   │   ├── models/                 # Mongoose schemas (User, Goal, Task, CheckIn, Conversation)
-│   │   ├── routes/                 # Express route definitions (auth, goals, tasks, checkins, chat, agent)
-│   │   ├── schemas/                # Zod request validation schemas
-│   │   ├── services/               # Auth, Goal & Task business logic services
-│   │   ├── types/                  # Backend TypeScript interfaces
-│   │   ├── app.ts                  # Express application setup & middleware configuration
-│   │   └── server.ts               # HTTP server entry point & graceful shutdown
-│   ├── tests/                      # Integration test suites (api.test.ts, agent.test.ts)
-│   ├── tsconfig.json               # Backend TypeScript configuration
-│   └── package.json
+│   │   ├── ai/                          # AI reasoning and tool calling engine
+│   │   │   ├── providers/               # GroqProvider (primary) & GeminiProvider (fallback)
+│   │   │   ├── aiService.ts             # Provider selector and message orchestrator
+│   │   │   ├── prompts.ts               # Behavioral habit coaching system prompts
+│   │   │   ├── toolDefinitions.ts       # 10 custom AI tool declarations
+│   │   │   ├── toolExecutor.ts          # Tenant-isolated tool execution against MongoDB
+│   │   │   └── types.ts                 # Provider and message interfaces
+│   │   ├── config/                      # Infrastructure configuration
+│   │   │   ├── db.ts                    # MongoDB connection, pooling, index sync & URI masking
+│   │   │   └── envValidator.ts          # Production security environment validation
+│   │   ├── controllers/                 # Route controllers (Auth, Goals, Tasks, CheckIns, Chat, Agent)
+│   │   ├── middleware/                  # JWT auth, validation, rate limiting & quota guards
+│   │   ├── models/                      # Mongoose models (User, Goal, Task, CheckIn, Message, Tokens)
+│   │   ├── routes/                      # Express route endpoints
+│   │   ├── schemas/                     # Zod request validation schemas
+│   │   ├── services/                    # Domain business logic (Auth, Goals, Tasks, Email, Analytics)
+│   │   ├── types/                       # Shared backend TypeScript types
+│   │   ├── app.ts                       # Express application, CORS normalization & /api/health
+│   │   └── server.ts                    # Production server entry point & graceful shutdown
+│   ├── tests/                           # Integration test suites (141 automated tests)
+│   ├── tsconfig.json                    # Backend TypeScript compiler settings (NodeNext)
+│   └── package.json                     # Backend scripts and dependencies
 │
-├── frontend/                       # React 18 & TypeScript SaaS Web Application
+├── frontend/                            # React 18, Vite & Tailwind CSS Client
 │   ├── src/
-│   │   ├── components/             # Reusable UI components (Task cards, Modals, Banners)
-│   │   │   └── common/             # ProtectedRoute and PublicOnlyRoute guards
-│   │   ├── context/                # AuthContext providing login, register, profile updates
-│   │   ├── data/                   # Initial seed data for offline preview mode
-│   │   ├── layouts/                # PublicLayout (marketing) & AppLayout (workspace)
+│   │   ├── components/                  # UI components (Task cards, modals, navigation, banners)
+│   │   ├── context/                     # AuthContext managing session state & profile updates
+│   │   ├── layouts/                     # PublicLayout (marketing) and AppLayout (authenticated workspace)
 │   │   ├── pages/
-│   │   │   ├── public/             # LandingPage, FeaturesPage, AboutPage, LoginPage, RegisterPage...
-│   │   │   └── app/                # DashboardPage, HabitsPage, NewHabitPage, CalendarPage...
-│   │   ├── services/               # ApiService handling JWT lifecycle & backend REST endpoints
-│   │   ├── types/                  # Domain interfaces (Goal, DailyTask, CheckInRecord, UserStats)
-│   │   ├── utils/                  # Confetti celebrations & date utilities
-│   │   ├── App.tsx                 # Master React Router v7 configuration
-│   │   ├── index.css               # Design tokens, font imports & Tailwind utilities
-│   │   └── main.tsx                # React DOM root entry point
-│   ├── tailwind.config.js          # Custom color palette tokens (#F7F7F2, #245C46, #DCEBDD...)
-│   ├── vite.config.ts              # Vite bundling configuration
-│   └── package.json
+│   │   │   ├── public/                  # Landing, Login, Register, ForgotPassword, ResetPassword
+│   │   │   └── app/                     # Dashboard, Habits, HabitDetail, NewHabit, Calendar, Analytics, Chat
+│   │   ├── services/                    # ApiService executing API requests with token handling
+│   │   ├── types/                       # Domain data types
+│   │   ├── utils/                       # Milestone confetti triggers & helpers
+│   │   ├── App.tsx                      # Master React Router v7 routes
+│   │   └── main.tsx                     # React DOM entry point
+│   ├── tailwind.config.js               # Theme configuration
+│   ├── vite.config.ts                   # Vite bundler configuration
+│   └── package.json                     # Frontend scripts and dependencies
 │
-├── habithero-agent/                # Fetch.ai Autonomous Python uAgent
-│   ├── tests/                      # Pytest suite verifying ChatProtocol and agent handlers
-│   ├── agent.py                    # Main uAgent definition, ChatProtocol handlers, Almanac registration
-│   ├── backend_client.py           # Async HTTP client forwarding messages to Node.js backend
-│   ├── config.py                   # Environment loader & configuration models
-│   └── requirements.txt            # Python dependencies (uagents 0.26.1)
+├── habithero-agent/                     # Fetch.ai Autonomous Python uAgent
+│   ├── tests/                           # Pytest test suite (10 automated agent tests)
+│   ├── agent.py                         # uAgent definition, ChatProtocol 0.3.0 handlers & mailbox
+│   ├── backend_client.py                # Async HTTP client forwarding messages to backend
+│   ├── config.py                        # Python environment configuration
+│   └── requirements.txt                 # Pinned dependencies (uagents 0.26.1)
 │
-├── docs/                           # Technical documentation & application screenshots
-│   ├── screenshots/                # Real production UI screenshots (landing, dashboard, habits...)
-│   ├── architecture.md             # In-depth architectural specification & sequence diagrams
-│   └── development.md              # Local setup, API reference & multi-service debugging
+├── docs/                                # Technical architecture and developer guides
+│   ├── architecture.md                  # Detailed sequence diagrams and component specifications
+│   └── development.md                   # Local setup notes
 │
-├── .env.example                    # Root environment variable template
-├── .gitignore                      # Git exclusion rules (strictly excludes all .env & secrets)
-├── CHANGELOG.md                    # Release history and milestone tracking
-├── CONTRIBUTING.md                 # Contribution guidelines & Conventional Commits standards
-├── LICENSE                         # Open-source MIT License
-├── package.json                    # Monorepo coordinate scripts
-├── README.md                       # Master repository documentation
-└── SECURITY.md                     # Security policy, reporting guidelines & data isolation
+├── .env.example                         # Root environment template
+├── .gitignore                           # Git ignore rules protecting all .env and secret files
+├── LICENSE                              # MIT License
+└── package.json                         # Workspace orchestrator package.json
 ```
 
 ---
 
-## ⚙️ How the Application Works
-
-```text
-1. ONBOARDING & ROADMAP GENERATION
-   User registers -> 3-step onboarding wizard -> Creates habit with daily commitment (e.g. 15 min) ->
-   Backend decomposes target into 4 progressive phases -> Kickoff Day 1 task is scheduled in MongoDB.
-
-2. DAILY EXECUTION & TRACKING
-   User opens /app/dashboard -> Views primary focus task -> Executes task ->
-   Clicks checkmark -> Optimistic UI updates -> Backend increments streak counter & saves completion timestamp.
-
-3. EVENING REFLECTION & CHECK-IN
-   Prompt opens DailyCheckInModal -> User records status (Great / Partial / Missed) ->
-   Submits reflection note -> CheckInRecord persisted in MongoDB.
-
-4. AUTONOMOUS WORKLOAD ADAPTATION
-   If a task is missed or user signals fatigue:
-   Gemini AI automatically invokes `adapt_task` or `adapt_habit_plan` ->
-   Halves duration for tomorrow's milestone -> Logs adaptation notice -> Streak remains protected.
-
-5. DECENTRALIZED ASI:ONE INTERACTION
-   User sends a message to HabitHero on ASI:One ->
-   uAgent receives message via Agentverse mailbox -> Forwards to backend with x-agent-secret ->
-   Gemini executes tools -> Response delivered back to ASI:One user.
-```
-
----
-
-## 🚀 Local Installation & Setup
+## Local Development Setup
 
 ### Prerequisites
-* **Node.js**: v20.0.0 or higher
-* **npm**: v10.0.0 or higher
-* **Python**: v3.11 or v3.12 (for the Fetch.ai uAgent)
-* **MongoDB**: Optional (the backend automatically starts an in-memory database if a local instance is not detected)
 
----
+- **Node.js**: v20.0.0 or higher
+- **npm**: v10.0.0 or higher
+- **Python**: v3.12 (specifically required for `uagents 0.26.1`)
+- **MongoDB**: A running local MongoDB instance on port 27017, or a free MongoDB Atlas cluster connection string. *(In development mode only, an in-memory database will automatically launch if local MongoDB is unavailable).*
 
-### 1. Clone the Repository
-```bash
+### 1. Clone Repository & Install Dependencies
+
+```powershell
+# Clone repository
 git clone https://github.com/manish23092003/habithero-agent.git
 cd habithero-agent
+
+# Install dependencies for both backend and frontend
+npm run install:all
 ```
 
----
+### 2. Configure Environment Files
 
-### 2. Configure Environment Variables
+Create the local environment files from their templates:
 
-#### Backend Configuration
-Create `backend/.env` from the provided template:
-```bash
-cp backend/.env.example backend/.env
+```powershell
+# Backend
+Copy-Item backend/.env.example backend/.env
+
+# Fetch.ai Agent
+Copy-Item habithero-agent/.env.example habithero-agent/.env
 ```
 
-| Variable | Description | Default / Example |
-|---|---|---|
-| `PORT` | HTTP port for the Node.js API server | `5000` |
-| `MONGODB_URI` | MongoDB connection URI | `mongodb://localhost:27017/habithero` |
-| `JWT_SECRET` | Secret key for signing authentication JWTs | *(Use a secure random string)* |
-| `FRONTEND_URL` | Allowed CORS origin for the React frontend | `http://localhost:5173` |
-| `NODE_ENV` | Runtime environment mode | `development` |
-| `GEMINI_API_KEY` | Google Gemini API key | *(Obtain from Google AI Studio)* |
-| `GEMINI_MODEL` | Gemini model name | `gemini-2.5-flash` |
-| `AGENT_SERVICE_SECRET` | Shared secret header for Fetch.ai agent requests | *(Use a secure random string)* |
+Edit `backend/.env` to configure your API keys (e.g., [Groq Console](https://console.groq.com/keys)).
 
-#### Fetch.ai Agent Configuration
-Create `habithero-agent/.env` from the provided template:
-```bash
-cp habithero-agent/.env.example habithero-agent/.env
-```
+### 3. Start Backend & Frontend
 
-| Variable | Description | Default / Example |
-|---|---|---|
-| `AGENT_NAME` | Identifier for the Fetch.ai uAgent | `HabitHero` |
-| `AGENT_SEED_PHRASE` | Seed phrase for deterministic agent address generation | *(Custom mnemonic or seed string)* |
-| `AGENT_PORT` | Local port for uAgent HTTP server | `8000` |
-| `BACKEND_API_URL` | Target endpoint for forwarding ASI:One messages | `http://localhost:5000/api/agent/chat` |
-| `AGENT_SERVICE_SECRET` | Shared secret (must match `backend/.env`) | *(Matches `AGENT_SERVICE_SECRET`)* |
-| `AGENT_MAILBOX_KEY` | Mailbox API key from Agentverse | *(Optional for local dev, required for ASI:One)* |
+Open two terminal sessions:
 
----
-
-### 3. Install Dependencies & Start Services
-
-#### Step A: Start the Backend API Server
-```bash
+```powershell
+# Terminal 1: Backend API (runs on http://localhost:5000)
 cd backend
-npm install
 npm run dev
 ```
-*Backend runs on `http://localhost:5000`. Health check available at `http://localhost:5000/api/health`.*
 
-#### Step B: Start the Frontend Application
-In a separate terminal:
-```bash
+```powershell
+# Terminal 2: Frontend Web App (runs on http://localhost:5173)
 cd frontend
-npm install
 npm run dev
 ```
-*Frontend application launches at `http://localhost:5173`.*
 
-#### Step C: Start the Fetch.ai uAgent (Optional for web-only usage)
+Visit `http://localhost:5173` in your browser.
+
+### 4. Start Fetch.ai uAgent (Optional for Local Web Development)
+
 In a third terminal:
-```bash
+
+```powershell
 cd habithero-agent
+
+# Create virtual environment with Python 3.12
 python -m venv .venv
 
-# On Linux / macOS:
-source .venv/bin/activate
+# Activate virtual environment (Windows PowerShell)
+.\.venv\Scripts\Activate.ps1
 
-# On Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-
+# Install pinned agent dependencies
 pip install -r requirements.txt
+
+# Start the uAgent (runs on http://localhost:8000)
 python agent.py
 ```
-*uAgent initializes, connects to Agentverse Mailbox, registers with the Almanac contract, and listens for ASI:One messages.*
 
 ---
 
-## 🧪 Testing Instructions
+## Environment Variables
 
-HabitHero includes comprehensive integration and unit test suites:
+All sensitive values must be kept in ignored environment files. Never commit `.env` files.
 
-```bash
-# 1. Run all backend integration tests (63 tests)
+### Backend (`backend/.env`)
+
+| Variable | Required | Description | Placeholder / Example |
+| :--- | :---: | :--- | :--- |
+| `NODE_ENV` | Yes | Runtime environment (`development`, `test`, `production`) | `development` |
+| `PORT` | Yes | HTTP listening port | `5000` |
+| `MONGODB_URI` | Yes | MongoDB Atlas connection string | `mongodb://localhost:27017/habithero` |
+| `JWT_SECRET` | Yes | Cryptographic secret for signing tokens (min. 16 characters in production) | `your_jwt_secret_key_change_in_production` |
+| `FRONTEND_URL` | Yes | Allowed CORS origin(s). Supports comma-separated origins. | `http://localhost:5173` |
+| `AI_PROVIDER` | Yes | Selected primary AI provider (`groq` or `gemini`) | `groq` |
+| `GROQ_API_KEY` | Yes* | Groq API key (Required if `AI_PROVIDER=groq`) | `your_groq_api_key_here` |
+| `GROQ_MODEL` | No | Groq model identifier | `openai/gpt-oss-120b` |
+| `GEMINI_API_KEY` | No | Google Gemini API key (Required if using Gemini provider or fallback) | `your_gemini_api_key_here` |
+| `GEMINI_MODEL` | No | Gemini model identifier | `gemini-2.5-flash` |
+| `ENABLE_GEMINI_FALLBACK` | No | Activate Gemini fallback if Groq encounters quota limits | `false` |
+| `AGENT_SERVICE_SECRET` | Yes | Shared secret for Fetch.ai uAgent authentication (min. 16 chars) | `your_agent_service_secret_here` |
+| `RESEND_API_KEY` | Optional | Resend API key for password reset delivery (starts with `re_`) | `re_your_resend_api_key_here` |
+| `EMAIL_FROM` | Optional | Sender address (must match verified domain in Resend) | `HabitHero <recovery@yourdomain.com>` |
+| `METRICS_SECRET` | Optional | Authorization key for `/api/metrics` monitoring endpoint | `your_secure_metrics_monitoring_secret_here` |
+| `MONGO_MAX_POOL_SIZE` | No | Maximum socket connection pool size (defaults to `25`) | `25` |
+| `MONGO_MIN_POOL_SIZE` | No | Minimum warm socket connection pool size (defaults to `2`) | `2` |
+
+### Frontend (`frontend/.env` or Host Build Environment)
+
+| Variable | Required | Description | Placeholder / Example |
+| :--- | :---: | :--- | :--- |
+| `VITE_API_URL` | Yes (in Prod) | Base API endpoint URL (baked at build time by Vite) | `https://api.yourdomain.com/api` |
+
+### Fetch.ai uAgent (`habithero-agent/.env`)
+
+| Variable | Required | Description | Placeholder / Example |
+| :--- | :---: | :--- | :--- |
+| `AGENT_NAME` | Yes | Display name for the agent | `HabitHero` |
+| `AGENT_SEED_PHRASE` | Yes | Seed phrase for deterministic Fetch.ai address generation | `your_agent_recovery_seed_phrase_here` |
+| `AGENT_PORT` | Yes | HTTP listening port for uAgent socket | `8000` |
+| `BACKEND_API_URL` | Yes | Target endpoint forwarding chat messages to Express backend | `https://api.yourdomain.com/api/agent/chat` |
+| `AGENT_SERVICE_SECRET` | Yes | Must match backend `AGENT_SERVICE_SECRET` | `your_agent_service_secret_here` |
+| `AGENT_MAILBOX_KEY` | For ASI:One | Agentverse Mailbox API Key for live message receipt | `your_agentverse_mailbox_key_here` |
+
+---
+
+## API Documentation
+
+All routes are prefixed with `/api`. Protected routes require a valid HTTP header: `Authorization: Bearer <token>`.
+
+### System & Health
+
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/health` | None | Database-aware readiness check. Returns `200` with `database: "connected"` when MongoDB is ready; returns `503` with `database: "disconnected"` when degraded. |
+| `GET` | `/api/metrics` | Header / JWT | System observability metrics (event-loop lag, memory, MongoDB socket pool stats). Requires `x-metrics-key` or admin JWT. |
+
+### Authentication & Account Recovery (`/api/auth`)
+
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :---: | :--- |
+| `POST` | `/api/auth/register` | None | Register account (`name`, `email`, `password`). Returns JWT and profile. |
+| `POST` | `/api/auth/login` | None | Authenticate (`email`, `password`). Returns JWT and profile. |
+| `POST` | `/api/auth/forgot-password` | None | Request password reset email. Rate-limited. Returns generic 200 to prevent account enumeration. |
+| `POST` | `/api/auth/reset-password` | None | Complete password reset (`token`, `password`). Invalidates existing tokens and sessions. |
+| `GET` | `/api/auth/me` | Bearer JWT | Retrieve current authenticated user profile. |
+| `PATCH` | `/api/auth/me` | Bearer JWT | Update profile display name. |
+
+### Habit Goals (`/api/goals`)
+
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/goals` | Bearer JWT | List all habit goals for the authenticated user. |
+| `POST` | `/api/goals` | Bearer JWT | Create a new goal, auto-generate 4-phase plan, and schedule kickoff Day 1 task. |
+| `GET` | `/api/goals/:id` | Bearer JWT | Retrieve specific goal details and associated milestone plan. |
+| `PATCH` | `/api/goals/:id` | Bearer JWT | Update goal parameters (title, daily commitment, status). |
+| `DELETE` | `/api/goals/:id` | Bearer JWT | Delete goal and cascade-delete all associated daily tasks. |
+
+### Tasks (`/api/tasks`)
+
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/tasks` | Bearer JWT | List all scheduled tasks across active goals. |
+| `GET` | `/api/tasks/today` | Bearer JWT | List tasks scheduled for today's date. |
+| `POST` | `/api/tasks` | Bearer JWT | Manually create a task under a goal. |
+| `PATCH` | `/api/tasks/:id/complete` | Bearer JWT | Toggle completion status, set `completedAt`, and update streak counter. |
+| `PATCH` | `/api/tasks/:id` | Bearer JWT | Update task title, duration, or difficulty. |
+
+### Check-Ins (`/api/checkins`)
+
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/checkins` | Bearer JWT | List historical check-in records. |
+| `GET` | `/api/checkins/today` | Bearer JWT | Retrieve today's check-in record if submitted. |
+| `POST` | `/api/checkins` | Bearer JWT | Record daily reflection (`status`, `notes`, `energyLevel`). |
+
+### Analytics (`/api/analytics`)
+
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :---: | :--- |
+| `GET` | `/api/analytics` | Bearer JWT | Calculate multi-tenant consistency score, streak longevity, 30-day rhythm, and category distribution. |
+
+### AI Companion & Chat (`/api/chat`)
+
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :---: | :--- |
+| `POST` | `/api/chat/message` | Bearer JWT | Submit message to AI coach. Executes tools and saves dialogue. |
+| `GET` | `/api/chat/conversations` | Bearer JWT | List user conversation threads. |
+| `GET` | `/api/chat/conversations/:id` | Bearer JWT | Retrieve message history for a specific conversation. |
+| `DELETE` | `/api/chat/conversations/:id` | Bearer JWT | Delete a conversation thread. |
+
+### Decentralized Agent Ingress (`/api/agent`)
+
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :---: | :--- |
+| `POST` | `/api/agent/chat` | `x-agent-secret` | Internal service-to-service endpoint for the Python uAgent. Dispatches message through `AIService` and returns structured reply. |
+
+---
+
+## AI Architecture & Tool Calling
+
+HabitHero's AI layer (`backend/src/ai/`) provides bidirectional reasoning: the model is not merely a conversational bot, but has direct tool access to manage the user's habit database.
+
+### Implemented AI Tools
+
+| Tool Name | Parameters | Purpose |
+| :--- | :--- | :--- |
+| `create_goal` | `title`, `category`, `dailyCommitmentMinutes`, `targetDays` | Creates goal in MongoDB and schedules Day 1 kickoff task. |
+| `get_user_goals` | *(none)* | Queries active goals and completion status for user. |
+| `update_goal` | `goalId`, `dailyCommitmentMinutes`, `status`, `adaptationNotice` | Modifies goal targets with adaptation logs. |
+| `get_today_tasks` | *(none)* | Retrieves tasks assigned for the current calendar date. |
+| `create_tasks` | `goalId`, `tasks` array | Inserts custom milestone tasks into a habit plan. |
+| `complete_task` | `taskId`, `completed` | Marks task completed and increments active streak. |
+| `adapt_task` | `taskId`, `newDurationMinutes`, `adaptationNote`, `difficulty` | Scales down a task to a 5–15 min micro-sprint when fatigued. |
+| `adapt_habit_plan` | `goalId`, `reason`, `targetMinutes` | Bulk-adapts upcoming tasks to prevent burnout. |
+| `record_checkin` | `status`, `missedReason`, `reflection`, `adaptTomorrow` | Saves reflection check-in to MongoDB. |
+| `get_progress_summary` | *(none)* | Calculates overall consistency rate and streak totals. |
+
+### Execution Strategy
+
+- **Primary Provider**: Groq using `openai/gpt-oss-120b` via `groq-sdk`. Groq executes function calls sequentially (`parallel_tool_calls: false`) to ensure deterministic database state transitions.
+- **Quota & Rate Limit Defense**: `backend/src/middleware/aiQuotaGuard.ts` enforces token burst limits. If Groq encounters rate limiting (`429`), the error surfaces a clear `Retry-After` suggestion to the user.
+- **Optional Fallback**: When `ENABLE_GEMINI_FALLBACK=true`, requests encountering rate limits seamlessly divert to `gemini-2.5-flash` via `@google/genai`.
+
+---
+
+## Fetch.ai uAgent & ASI:One
+
+HabitHero implements an autonomous Python micro-agent (`habithero-agent/`) that bridges the platform to the Fetch.ai decentralized agent network.
+
+- **Protocol Specification**: Uses the official `AgentChatProtocol` **v0.3.0** (`proto:30a801ed3a83f9a0ff0a9f1e6fe958cb91da1fc2218b153df7b6cbf87bd33d62`).
+- **Deterministic Identity**: Derived from `AGENT_SEED_PHRASE`, creating a permanent Fetch.ai address (`agent1qghes4...`).
+- **Communication Flow**:
+  1. A user messages the agent on [ASI:One](https://asi1.ai/chat).
+  2. The message is buffered in the Agentverse mailbox.
+  3. The local uAgent event loop receives the `ChatMessage` and immediately emits a `ChatAcknowledgement`.
+  4. The uAgent forwards the message content over HTTP POST to `/api/agent/chat` on the backend, authenticated with `x-agent-secret`.
+  5. The backend maps the sender's address to an isolated user document in MongoDB and dispatches the prompt through the AI tool engine.
+  6. The structured response returns to the Python agent, which packages it into a `ChatMessage` and delivers it back across the decentralized protocol.
+
+---
+
+## Automated Testing
+
+The codebase includes comprehensive integration test suites across the backend API, AI tools, multi-tenant isolation, password reset security, and the Python uAgent.
+
+### Running Backend Tests (141 Tests)
+
+```powershell
 cd backend
 npm test
-
-# 2. Run API test suite individually (46 tests)
-npm run test:api
-
-# 3. Run Agent integration test suite individually (17 tests)
-npm run test:agent
-
-# 4. Verify frontend production TypeScript build
-cd ../frontend
-npm run build
-
-# 5. Run Python uAgent tests
-cd ../habithero-agent
-pytest tests/test_agent.py
 ```
 
-### Test Suite Coverage
-* **Authentication Suite**: Registration, duplicate rejection, login verification, invalid password rejection (401), `/api/auth/me` profile responses, password hash concealment.
-* **Goal & Task Suite**: Phased plan auto-generation, kickoff Day 1 task creation, completion toggling, completion timestamps, cascading task deletion upon goal removal.
-* **Data Isolation Suite**: Cross-user boundary tests verifying that User B cannot access or complete User A's goals, tasks, or conversations (404/403 isolation).
-* **AI Tool Execution Suite**: 9 autonomous Gemini function calls (`create_goal`, `get_today_tasks`, `complete_task`, `adapt_task`, `record_checkin`, `get_progress_summary`).
-* **Agent Integration Suite**: Authorization headers (`x-agent-secret`), empty message handling, multi-sender MongoDB persistence, and conversation isolation.
+Latest verified backend test breakdown:
+- **API & CRUD Suite** (`tests/api.test.ts`): 46 passing
+- **Agent Endpoint & Isolation Suite** (`tests/agent.test.ts`): 17 passing
+- **Groq AI Tool Calling Suite** (`tests/groq.test.ts`): 45 passing
+- **Multi-Tenant Analytics Suite** (`tests/analytics.test.ts`): 4 passing
+- **Password Reset Security Suite** (`tests/passwordReset.test.ts`): 14 passing
+- **Production Hardening Suite** (`tests/productionHardening.test.ts`): 15 passing
+- **Total**: **141 passing, 0 failing**
+
+### Running Python uAgent Tests (10 Tests)
+
+```powershell
+cd habithero-agent
+.\.venv\Scripts\python -m pytest -v tests/test_agent.py
+```
+- **Total**: **10 passing, 0 failing**
 
 ---
 
-## 📡 API Endpoints Reference
+## Production Deployment Guide
 
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|---|
-| `GET` | `/api/health` | Health check endpoint returning API status | None |
-| `POST` | `/api/auth/register` | Register a new user profile | None |
-| `POST` | `/api/auth/login` | Authenticate with email/password and obtain JWT | None |
-| `GET` | `/api/auth/me` | Fetch authenticated user profile details | Bearer JWT |
-| `PATCH` | `/api/auth/me` | Update authenticated user display name | Bearer JWT |
-| `GET` | `/api/goals` | List all active goals for authenticated user | Bearer JWT |
-| `POST` | `/api/goals` | Create a new goal and schedule Day 1 kickoff task | Bearer JWT |
-| `GET` | `/api/goals/:id` | Fetch specific goal details and phase breakdown | Bearer JWT |
-| `PATCH` | `/api/goals/:id` | Update goal title, tagline, or daily commitment | Bearer JWT |
-| `DELETE` | `/api/goals/:id` | Delete goal and cascade-delete associated tasks | Bearer JWT |
-| `GET` | `/api/tasks` | List all tasks assigned to authenticated user | Bearer JWT |
-| `GET` | `/api/tasks/today` | List active tasks scheduled for today | Bearer JWT |
-| `POST` | `/api/tasks` | Manually create a new task under a goal | Bearer JWT |
-| `PATCH` | `/api/tasks/:id/complete`| Toggle task completion status and update streak | Bearer JWT |
-| `GET` | `/api/checkins` | Fetch historical check-in records | Bearer JWT |
-| `GET` | `/api/checkins/today` | Fetch today's check-in record if submitted | Bearer JWT |
-| `POST` | `/api/checkins` | Record daily reflection and flag tomorrow's plan | Bearer JWT |
-| `POST` | `/api/chat/message` | Send prompt to Gemini AI companion with tools | Bearer JWT |
-| `GET` | `/api/chat/conversations` | List user companion chat sessions | Bearer JWT |
-| `GET` | `/api/chat/conversations/:id`| Fetch dialogue history for specific conversation | Bearer JWT |
-| `DELETE`| `/api/chat/conversations/:id`| Delete a conversation session | Bearer JWT |
-| `POST` | `/api/agent/chat` | Internal endpoint for Fetch.ai uAgent messages | `x-agent-secret` |
+### Render (Backend Deployment)
+
+The backend is configured for deployment as a **Render Web Service**.
+
+1. **Create Web Service**:
+   - Connect your GitHub repository: `https://github.com/manish23092003/habithero-agent`
+   - Select **Web Service**
+2. **Build & Runtime Configuration**:
+   - **Root Directory**: `backend`
+   - **Environment**: `Node`
+   - **Build Command**: `npm install && npm run build`
+   - **Start Command**: `npm start`
+   - **Health Check Path**: `/api/health`
+3. **Environment Variables on Render**:
+   - `NODE_ENV`: `production`
+   - `PORT`: `10000` *(Render sets this automatically; backend binds to `0.0.0.0:${PORT}`)*
+   - `MONGODB_URI`: `mongodb+srv://<user>:<password>@<cluster>.mongodb.net/habithero?retryWrites=true&w=majority`
+   - `JWT_SECRET`: *(Cryptographically random string, minimum 16 characters)*
+   - `FRONTEND_URL`: `https://your-frontend.vercel.app` *(Supports multiple comma-separated URLs; trailing slashes are safely normalized)*
+   - `AI_PROVIDER`: `groq`
+   - `GROQ_API_KEY`: *(Your production Groq API key)*
+   - `GROQ_MODEL`: `openai/gpt-oss-120b`
+   - `AGENT_SERVICE_SECRET`: *(Shared random secret, minimum 16 characters)*
+   - `RESEND_API_KEY`: *(Optional for staging, required for password reset emails; starts with `re_`)*
+   - `EMAIL_FROM`: `HabitHero <recovery@yourverifieddomain.com>`
+   - `METRICS_SECRET`: *(Random secret protecting `/api/metrics`)*
+   - `MONGO_MAX_POOL_SIZE`: `25`
+   - `MONGO_MIN_POOL_SIZE`: `2`
+
+### Vercel (Frontend Deployment)
+
+The frontend is a static React single-page application built with Vite.
+
+1. **Import Project into Vercel**:
+   - **Root Directory**: `frontend`
+   - **Framework Preset**: `Vite`
+   - **Build Command**: `npm run build` (`tsc && vite build`)
+   - **Output Directory**: `dist`
+2. **Build Environment Variable**:
+   - `VITE_API_URL`: `https://<your-render-service-name>.onrender.com/api`
+   > [!IMPORTANT]
+   > `VITE_API_URL` is baked into the JavaScript bundle at build time. Ensure this is configured in Vercel before initiating the production build.
+3. **SPA Rewrites**:
+   Ensure `vercel.json` in `frontend/` (or Vercel project settings) redirects all routes to `/index.html` to support client-side routing.
+
+### Fetch.ai Agent Deployment
+
+> [!WARNING]
+> The Fetch.ai Python uAgent **cannot run on serverless platforms** (e.g., Vercel Functions, AWS Lambda). It runs an active, stateful asynchronous event loop (`agent.run()`) maintaining an open socket connection to Agentverse.
+
+- **Hosting Requirement**: Deploy on an always-on container or background worker (e.g., Render Background Worker, Railway, Fly.io, or VPS).
+- **Runtime**: Python 3.12 with `pip install -r requirements.txt`.
+- **Start Command**: `python agent.py`
+- **Required Environment Variables**:
+  - `AGENT_NAME`: `HabitHero`
+  - `AGENT_SEED_PHRASE`: *(Dedicated random production seed phrase)*
+  - `AGENT_PORT`: `8000`
+  - `BACKEND_API_URL`: `https://<your-render-service-name>.onrender.com/api/agent/chat`
+  - `AGENT_SERVICE_SECRET`: *(Must exactly match backend `AGENT_SERVICE_SECRET`)*
+  - `AGENT_MAILBOX_KEY`: *(Obtained from [agentverse.ai](https://agentverse.ai))*
+
+### Resend Email Domain Setup
+
+- **Sandbox Restriction**: By default, an unverified Resend account using `onboarding@resend.dev` can only deliver emails to the email address of the account owner.
+- **Production Verification**: Before launching public password reset functionality:
+  1. Add your custom domain in the [Resend Domains Dashboard](https://resend.com/domains).
+  2. Configure the required DNS records (SPF, DKIM, and DMARC) with your domain registrar.
+  3. Set `EMAIL_FROM=HabitHero <recovery@yourverifieddomain.com>` in your backend environment.
 
 ---
 
-## 🔐 Security Considerations
+## Security & Data Protection
 
-* **Strict Tenancy Isolation**: All database operations query by `userId: req.user.id`. Foreign access attempts are rejected with HTTP 404 or 403.
-* **Service Secret Protection**: Internal communication between the Python uAgent and Node.js backend requires verified `x-agent-secret` headers.
-* **Stateless JWT Authorization**: Bearer tokens are signed with HMAC-SHA256 and verified on every protected request.
-* **Zero Credential Exposure**: `.gitignore` strictly excludes `.env`, `*.agent.key`, `*.seed`, and local database files. All `.env.example` templates contain only non-sensitive placeholders.
-* **Input Sanitization & Validation**: Request bodies are parsed through strict Zod schemas, rejecting unexpected fields.
+- **No Credential Logging**: All database connection strings are masked via `sanitizeMongoUri()` prior to logging. Usernames and passwords never appear in console logs, server outputs, or exception objects.
+- **Zero Fallback in Production**: When `NODE_ENV=production`, `backend/src/config/db.ts` rejects any fallback to local or in-memory databases. If the Atlas connection fails, the process exits with code 1.
+- **Multi-Tenant Scoping**: All mutations and queries filter by the authenticated token's `userId`. Users cannot view or modify foreign goals, tasks, check-ins, or chat sessions.
+- **Timing-Attack Defense**: Password reset requests use PBKDF2 hashing when an unknown email is submitted, equalizing response timing and preventing user enumeration.
+- **Error Masking**: Production errors on HTTP 500 return generic status messages without leaking database schemas or stack traces.
+- **Git Protection**: Git ignore policies explicitly exclude `.env`, `.env.production`, `.env.staging`, `*.agent.key`, and database files.
 
 ---
 
-## 🗺️ Roadmap & Future Enhancements
+## Roadmap
 
-- [x] Full-Stack SaaS application architecture (React 18 + Node.js + MongoDB)
-- [x] Dedicated public marketing website and authenticated application workspace
-- [x] Secure authentication gateway with protected route guards
-- [x] 4-Phase Habit Roadmap generation and task management
-- [x] Interactive Rhythm Calendar and Consistency Analytics
-- [x] Gemini 2.5 Flash autonomous tool execution engine (9 custom tools)
+- [x] Full-Stack SaaS architecture (React 18 + Node.js Express + MongoDB)
+- [x] 4-Phase Habit Roadmap generation and milestone tracking
+- [x] Rhythm Calendar and Consistency Analytics matrix
+- [x] Groq AI tool execution engine (10 autonomous tools)
 - [x] Fetch.ai `AgentChatProtocol` 0.3.0 and Agentverse Mailbox integration
-- [x] Multi-tenant database isolation verified across 63 passing tests
-- [ ] Push notifications and automated evening check-in reminders
-- [ ] Two-way Google Calendar and Apple Calendar synchronization
-- [ ] Voice-based check-in reflections via Fetch.ai audio stream protocols
+- [x] Production hardening: database readiness probes, URI masking, connection pooling
+- [ ] Push notifications and scheduled evening check-in reminders
+- [ ] Two-way synchronization with Google Calendar and Apple Calendar
 - [ ] Social accountability circles with selective progress sharing
 
 ---
 
-## 🤝 Contributing
+## License
 
-Contributions are welcome! Please review [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code style, commit conventions, and pull request procedures.
-
----
-
-## 📄 License
-
-This project is open-source and licensed under the **[MIT License](LICENSE)**.
+This project is open-source and licensed under the terms of the [MIT License](LICENSE).
 
 ---
 
-## 👨‍💻 Author
+## Author
 
 **Manish Soni**
-* **GitHub**: [@manish23092003](https://github.com/manish23092003)
-* **Repository**: [habithero-agent](https://github.com/manish23092003/habithero-agent)
+- GitHub: [@manish23092003](https://github.com/manish23092003)
+- Repository: [habithero-agent](https://github.com/manish23092003/habithero-agent)

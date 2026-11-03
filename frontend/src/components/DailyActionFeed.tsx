@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  ListFilter, 
   Trophy, 
   Plus, 
-  CalendarCheck
+  CalendarCheck,
+  CheckCircle2,
+  Inbox
 } from 'lucide-react';
 import { DailyTask } from '../types';
 import { DailyTaskCard } from './DailyTaskCard';
@@ -43,36 +44,36 @@ export const DailyActionFeed: React.FC<DailyActionFeedProps> = ({
   return (
     <div className="space-y-4">
       {/* Feed Header with Task Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-stone-200/80">
         <div>
           <div className="flex items-center gap-2.5">
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
-              Today's Actions
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-stone-900">
+              Today's Tasks
             </h2>
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-              {pendingTasks.length} {pendingTasks.length === 1 ? 'task pending' : 'tasks pending'}
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 text-stone-700 border border-stone-200">
+              {pendingTasks.length} {pendingTasks.length === 1 ? 'task remaining' : 'tasks remaining'}
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Focus on one micro-action at a time. The foundational habit rule: <em>Never miss twice</em>.
+          <p className="text-xs text-stone-500 mt-1">
+            Focus on one small step at a time. Even 15 minutes keeps your momentum going.
           </p>
         </div>
 
         {/* Filter Segmented Control */}
         <div 
-          className="flex items-center gap-1 self-start sm:self-auto bg-slate-100 p-1 rounded-lg border border-slate-200/60" 
+          className="flex items-center gap-1 self-start sm:self-auto bg-stone-100/90 p-1 rounded-xl border border-stone-200/70" 
           role="tablist"
-          aria-label="Filter tasks by completion status"
+          aria-label="Filter tasks by status"
         >
           <button
             type="button"
             role="tab"
             aria-selected={filter === 'all'}
             onClick={() => setFilter('all')}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               filter === 'all'
-                ? 'bg-white text-slate-900 font-semibold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-stone-900 font-semibold shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             All ({tasks.length})
@@ -82,10 +83,10 @@ export const DailyActionFeed: React.FC<DailyActionFeedProps> = ({
             role="tab"
             aria-selected={filter === 'pending'}
             onClick={() => setFilter('pending')}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               filter === 'pending'
-                ? 'bg-white text-slate-900 font-semibold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-stone-900 font-semibold shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             Pending ({pendingTasks.length})
@@ -95,10 +96,10 @@ export const DailyActionFeed: React.FC<DailyActionFeedProps> = ({
             role="tab"
             aria-selected={filter === 'completed'}
             onClick={() => setFilter('completed')}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               filter === 'completed'
-                ? 'bg-white text-slate-900 font-semibold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-stone-900 font-semibold shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             Completed ({completedTasks.length})
@@ -106,112 +107,104 @@ export const DailyActionFeed: React.FC<DailyActionFeedProps> = ({
         </div>
       </div>
 
-      {/* Completion Banner */}
-      {allCompleted && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-5 text-center space-y-2.5 shadow-subtle animate-fade-in">
-          <div className="w-10 h-10 mx-auto rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
-            <Trophy className="w-5 h-5 text-emerald-600" />
+      {/* Task Cards List */}
+      <div className="space-y-3" role="feed" aria-label="Daily task list">
+        {displayedTasks.length === 0 ? (
+          <div className="rounded-2xl border border-stone-200/90 bg-white p-8 sm:p-12 text-center space-y-4 shadow-card">
+            {filter === 'completed' && completedTasks.length === 0 ? (
+              <>
+                <div className="w-12 h-12 mx-auto rounded-xl bg-stone-100 flex items-center justify-center text-stone-500">
+                  <Inbox className="w-6 h-6" />
+                </div>
+                <div className="space-y-1 max-w-sm mx-auto">
+                  <h3 className="text-base font-bold text-stone-900">No tasks completed yet today</h3>
+                  <p className="text-xs text-stone-500">
+                    Choose a task above and check it off when you're done.
+                  </p>
+                </div>
+              </>
+            ) : filter === 'pending' && allCompleted ? (
+              <>
+                <div className="w-12 h-12 mx-auto rounded-xl bg-brand-50 border border-brand-200 text-brand-600 flex items-center justify-center shadow-xs">
+                  <Trophy className="w-6 h-6" />
+                </div>
+                <div className="space-y-1 max-w-sm mx-auto">
+                  <h3 className="text-base font-bold text-stone-900">All tasks completed! 🎉</h3>
+                  <p className="text-xs text-stone-500">
+                    You've finished everything on your list today! Take a moment to reflect on your day.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenCheckIn}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-subtle hover:shadow-card transition-all"
+                >
+                  <CalendarCheck className="w-4 h-4" />
+                  <span>Complete Daily Reflection</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 mx-auto rounded-xl bg-stone-100 flex items-center justify-center text-stone-400">
+                  <Inbox className="w-6 h-6" />
+                </div>
+                <div className="space-y-1 max-w-sm mx-auto">
+                  <h3 className="text-base font-bold text-stone-900">No tasks scheduled</h3>
+                  <p className="text-xs text-stone-500">
+                    Add a new habit to start building your daily routine.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenNewGoal}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-subtle transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create New Habit</span>
+                </button>
+              </>
+            )}
           </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900">
-              All Actions Completed for Today
-            </h3>
-            <p className="text-xs text-slate-600 max-w-sm mx-auto mt-0.5 leading-relaxed">
-              You've protected your momentum and completed all scheduled micro-tasks. Lock in your streak with an evening check-in.
-            </p>
+        ) : (
+          displayedTasks.map(task => (
+            <DailyTaskCard
+              key={task.id}
+              task={task}
+              onToggleComplete={onToggleComplete}
+              onQuickAdapt={onQuickAdapt}
+              isUpdating={inFlightTaskIds.has(task.id)}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Congratulatory banner when all tasks are finished */}
+      {allCompleted && filter === 'all' && (
+        <div className="p-4 rounded-2xl bg-brand-50/70 border border-brand-200/80 text-brand-900 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-subtle animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-brand-900">
+                All Tasks Done for Today!
+              </h4>
+              <p className="text-xs text-brand-700">
+                You completed all {tasks.length} tasks today! Great job staying consistent.
+              </p>
+            </div>
           </div>
+
           <button
             type="button"
             onClick={onOpenCheckIn}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-subtle hover:shadow-card transition-all"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-subtle transition-colors shrink-0"
           >
-            <CalendarCheck className="w-4 h-4" />
-            <span>Complete Evening Reflection</span>
+            <CalendarCheck className="w-3.5 h-3.5" />
+            <span>Complete Daily Reflection</span>
           </button>
         </div>
       )}
-
-      {/* Task List */}
-      <div className="space-y-3" role="feed" aria-label="Daily micro-actions feed">
-        {displayedTasks.map(task => (
-          <DailyTaskCard
-            key={task.id}
-            task={task}
-            onToggleComplete={onToggleComplete}
-            onQuickAdapt={onQuickAdapt}
-            isUpdating={inFlightTaskIds.has(task.id)}
-          />
-        ))}
-
-        {tasks.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 p-8 sm:p-10 text-center bg-white space-y-3 shadow-subtle">
-            <div className="w-10 h-10 mx-auto rounded-xl bg-brand-50 border border-brand-200/60 flex items-center justify-center text-brand-600 shadow-xs">
-              <CalendarCheck className="w-5 h-5" />
-            </div>
-            <div className="space-y-1 max-w-sm mx-auto">
-              <h4 className="text-sm font-bold text-slate-900">
-                No Daily Actions Scheduled Yet
-              </h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Create your first goal roadmap to generate your personalized daily micro-actions.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenNewGoal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-subtle transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create New Goal Plan</span>
-            </button>
-          </div>
-        ) : displayedTasks.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center bg-white space-y-2">
-            <div className="w-9 h-9 mx-auto rounded-full bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100">
-              <ListFilter className="w-4 h-4" />
-            </div>
-            <div className="space-y-0.5">
-              <h4 className="text-xs sm:text-sm font-semibold text-slate-800">
-                No tasks match this filter
-              </h4>
-              <p className="text-xs text-slate-500">
-                {filter === 'completed'
-                  ? 'Complete an action above to see it recorded here.'
-                  : 'All your actions for today are completed.'}
-              </p>
-            </div>
-            {filter !== 'all' && (
-              <button
-                type="button"
-                onClick={() => setFilter('all')}
-                className="text-xs font-semibold text-brand-700 hover:underline pt-1"
-              >
-                View all tasks
-              </button>
-            )}
-          </div>
-        ) : null}
-      </div>
-
-      {/* Quick Add Goal Prompt Card */}
-      <div className="rounded-xl border border-slate-200/90 bg-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-card">
-        <div className="space-y-0.5">
-          <p className="text-xs sm:text-sm font-bold text-slate-900">
-            Have a new habit or skill you want to develop?
-          </p>
-          <p className="text-xs text-slate-500">
-            HabitHero breaks your target into low-friction daily micro-sessions with progressive milestones.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onOpenNewGoal}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border border-slate-300 hover:bg-slate-50 text-slate-800 transition-colors shrink-0 shadow-subtle"
-        >
-          <Plus className="w-3.5 h-3.5 text-slate-600" />
-          <span>New Goal Plan</span>
-        </button>
-      </div>
     </div>
   );
 };

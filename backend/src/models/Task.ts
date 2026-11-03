@@ -53,6 +53,11 @@ const TaskSchema = new Schema<TaskDocument>(
       type: Date,
       default: null,
     },
+    completedDate: {
+      type: String,
+      default: null,
+      index: true,
+    },
     dayNumber: {
       type: Number,
       required: true,
@@ -77,6 +82,12 @@ const TaskSchema = new Schema<TaskDocument>(
     timestamps: true,
   }
 );
+
+// Compound indexes for fast multi-user queries under concurrency
+TaskSchema.index({ userId: 1, scheduledFor: 1, status: 1 });
+TaskSchema.index({ userId: 1, goalId: 1 });
+TaskSchema.index({ goalId: 1, status: 1 });
+TaskSchema.index({ userId: 1, status: 1, createdAt: -1 });
 
 export const Task = mongoose.model<TaskDocument>('Task', TaskSchema);
 

@@ -56,8 +56,8 @@ const CheckInSchema = new Schema<CheckInDocument>(
   }
 );
 
-// Compound index so a user has easy lookup for a specific date
-CheckInSchema.index({ userId: 1, date: 1 });
+// Compound unique index ensuring idempotency: exactly one check-in per user per day
+CheckInSchema.index({ userId: 1, date: 1 }, { unique: true });
 
 export const CheckIn = mongoose.model<CheckInDocument>('CheckIn', CheckInSchema);
 

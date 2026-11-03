@@ -77,7 +77,7 @@ export const INITIAL_TASKS: DailyTask[] = [
     dayNumber: 8,
     scheduledFor: 'Today',
     category: 'learning',
-    adaptationNote: '⚡ Adapted: Shortened to 15 mins to keep your 5-day streak alive after yesterday\'s busy hours.'
+    adaptationNote: '⚡ Adjusted: Shortened to 15 mins to keep your momentum going after yesterday\'s busy schedule.'
   },
   {
     id: 'task-focus-day12',
@@ -135,7 +135,7 @@ export const INITIAL_MESSAGES: AgentMessage[] = [
   {
     id: 'msg-4',
     sender: 'agent',
-    content: "Perfect! I've engineered a progressive 30-Day Java Blueprint: 4 focused phases, broken down into single-concept daily actions.",
+    content: "Perfect! I've put together a clear 30-Day Java habit plan with 4 phases, broken down into manageable daily steps.",
     timestamp: 'Yesterday at 9:04 AM',
     protocolMetadata: {
       protocol: 'fetchai_chat_v1',
@@ -167,8 +167,8 @@ export const INITIAL_MESSAGES: AgentMessage[] = [
     timestamp: 'Today at 8:31 AM',
     actionProposal: {
       type: 'reduce_time',
-      label: 'Applied 15-Min Micro Sprint',
-      description: 'Reduced cognitive load for today while retaining core OOP practice.',
+      label: 'Adjusted to 15-Minute Session',
+      description: 'Kept the exercise manageable for today so you stay on track without feeling rushed.',
       impactMinutes: 15,
       applied: true
     },

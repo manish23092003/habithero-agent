@@ -14,6 +14,7 @@ export interface IUser {
   email: string;
   fetchAddress?: string;
   passwordHash: string;
+  passwordChangedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,6 +55,7 @@ export interface ITask {
   difficulty: TaskDifficulty;
   status: TaskStatus;
   completedAt?: Date | string;
+  completedDate?: string;
   dayNumber: number;
   scheduledFor: string;
   adaptationNote?: string;
@@ -84,4 +86,3 @@ export interface AuthenticatedRequest extends Request {
     name: string;
   };
 }
-

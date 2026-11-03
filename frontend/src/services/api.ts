@@ -1,6 +1,7 @@
-import { Goal, DailyTask, CheckInRecord, GoalCategory } from '../types';
+import { Goal, DailyTask, CheckInRecord, GoalCategory, UserAnalytics } from '../types';
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
+const isProd = Boolean((import.meta as any).env?.PROD);
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || (isProd ? '/api' : 'http://localhost:5000/api');
 
 export interface AuthUser {
   id: string;
@@ -15,8 +16,12 @@ export interface AuthResponse {
 }
 
 class ApiService {
-  private getToken(): string | null {
+  public getToken(): string | null {
     return localStorage.getItem('habithero_token');
+  }
+
+  public hasToken(): boolean {
+    return !!this.getToken();
   }
 
   public setToken(token: string): void {
@@ -50,7 +55,7 @@ class ApiService {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        if (response.status === 401 && endpoint !== '/auth/login' && endpoint !== '/auth/register') {
+        if (response.status === 401 && !endpoint.startsWith('/auth/login') && !endpoint.startsWith('/auth/register') && !endpoint.startsWith('/auth/forgot-password') && !endpoint.startsWith('/auth/reset-password')) {
           this.removeToken();
         }
         throw new Error(data.error || `Request failed with status ${response.status}`);
@@ -59,7 +64,11 @@ class ApiService {
       return data;
     } catch (err: any) {
       if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-        throw new Error('Backend server is unreachable. Please check if http://localhost:5000 is running.');
+        throw new Error(
+          isProd
+            ? 'Backend server is temporarily unreachable. Please check your network connection and try again.'
+            : 'Backend server is unreachable. Please verify http://localhost:5000 is running.'
+        );
       }
       throw err;
     }
@@ -89,6 +98,28 @@ class ApiService {
     return res.data;
   }
 
+  async updateProfile(name: string): Promise<AuthUser> {
+    const res = await this.request<{ success: boolean; data: AuthUser }>('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    });
+    return res.data;
+  }
+
+  async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, password: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    });
+  }
+
   logout(): void {
     this.removeToken();
   }
@@ -112,16 +143,41 @@ class ApiService {
     }));
   }
 
+  async getGoalById(goalId: string): Promise<Goal> {
+    const res = await this.request<{ success: boolean; data: any }>(`/goals/${goalId}`);
+    const g = res.data;
+    return {
+      id: g._id || g.id,
+      title: g.title,
+      tagline: g.tagline || '',
+      category: g.category as GoalCategory,
+      targetDays: g.targetDays,
+      currentDay: g.currentDay || 1,
+      dailyCommitmentMinutes: g.dailyCommitmentMinutes,
+      streak: g.streak || 0,
+      status: g.status,
+      planOutline: g.planOutline || [],
+      adaptationNotice: g.adaptationNotice,
+      createdAt: g.createdAt,
+    };
+  }
+
   async createGoal(goalData: {
     title: string;
     tagline?: string;
     category?: GoalCategory;
     targetDays?: number;
     dailyCommitmentMinutes?: number;
+    idempotencyKey?: string;
   }): Promise<{ goal: Goal; initialTask: DailyTask }> {
+    const key = goalData.idempotencyKey || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `goal_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const payload = { ...goalData, idempotencyKey: key };
     const res = await this.request<{ success: boolean; data: { goal: any; initialTask: any } }>('/goals', {
       method: 'POST',
-      body: JSON.stringify(goalData),
+      headers: {
+        'Idempotency-Key': key,
+      },
+      body: JSON.stringify(payload),
     });
     const g = res.data.goal;
     const t = res.data.initialTask;
@@ -160,6 +216,28 @@ class ApiService {
     return { goal: formattedGoal, initialTask: formattedTask };
   }
 
+  async updateGoal(goalId: string, updateData: Partial<Goal>): Promise<Goal> {
+    const res = await this.request<{ success: boolean; data: any }>(`/goals/${goalId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updateData),
+    });
+    const g = res.data;
+    return {
+      id: g._id || g.id,
+      title: g.title,
+      tagline: g.tagline || '',
+      category: g.category as GoalCategory,
+      targetDays: g.targetDays,
+      currentDay: g.currentDay || 1,
+      dailyCommitmentMinutes: g.dailyCommitmentMinutes,
+      streak: g.streak || 0,
+      status: g.status,
+      planOutline: g.planOutline || [],
+      adaptationNotice: g.adaptationNotice,
+      createdAt: g.createdAt,
+    };
+  }
+
   async deleteGoal(goalId: string): Promise<void> {
     await this.request(`/goals/${goalId}`, { method: 'DELETE' });
   }
@@ -180,14 +258,77 @@ class ApiService {
       scheduledFor: t.scheduledFor || 'Today',
       category: t.category,
       adaptationNote: t.adaptationNote,
+      completedDate: t.completedDate,
       completedAt: t.completedAt ? new Date(t.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined,
     }));
   }
 
-  async completeTask(taskId: string, completed: boolean): Promise<DailyTask> {
+  async getAllTasks(): Promise<DailyTask[]> {
+    const res = await this.request<{ success: boolean; data: any[] }>('/tasks');
+    return res.data.map(t => ({
+      id: t._id || t.id,
+      goalId: t.goalId,
+      goalTitle: t.goalTitle,
+      title: t.title,
+      description: t.description || '',
+      durationMinutes: t.durationMinutes,
+      difficulty: t.difficulty || 'easy',
+      status: t.status,
+      dayNumber: t.dayNumber || 1,
+      scheduledFor: t.scheduledFor || 'Today',
+      category: t.category,
+      adaptationNote: t.adaptationNote,
+      completedDate: t.completedDate,
+      completedAt: t.completedAt ? new Date(t.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined,
+    }));
+  }
+
+  async createTask(taskData: {
+    goalId: string;
+    title: string;
+    description?: string;
+    durationMinutes: number;
+    difficulty?: 'easy' | 'moderate' | 'challenging';
+    scheduledFor?: string;
+    dayNumber?: number;
+    category?: GoalCategory;
+    idempotencyKey?: string;
+  }): Promise<DailyTask> {
+    const key = taskData.idempotencyKey || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+    const payload = { ...taskData, idempotencyKey: key };
+    const res = await this.request<{ success: boolean; data: any }>('/tasks', {
+      method: 'POST',
+      headers: {
+        'Idempotency-Key': key,
+      },
+      body: JSON.stringify(payload),
+    });
+    const t = res.data;
+    return {
+      id: t._id || t.id,
+      goalId: t.goalId,
+      goalTitle: t.goalTitle,
+      title: t.title,
+      description: t.description || '',
+      durationMinutes: t.durationMinutes,
+      difficulty: t.difficulty || 'easy',
+      status: t.status,
+      dayNumber: t.dayNumber || 1,
+      scheduledFor: t.scheduledFor || 'Today',
+      category: t.category,
+      adaptationNote: t.adaptationNote,
+      completedAt: t.completedAt ? new Date(t.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined,
+    };
+  }
+
+  async completeTask(taskId: string, completed: boolean, clientDate?: string): Promise<DailyTask> {
+    const dateToSend = clientDate || new Date().toLocaleDateString('en-CA');
     const res = await this.request<{ success: boolean; data: any }>(`/tasks/${taskId}/complete`, {
       method: 'PATCH',
-      body: JSON.stringify({ completed }),
+      headers: {
+        'X-Client-Date': dateToSend,
+      },
+      body: JSON.stringify({ completed, clientDate: dateToSend }),
     });
     const t = res.data;
     return {
@@ -231,6 +372,20 @@ class ApiService {
   }
 
   // --- Check-Ins APIs ---
+  async getCheckIns(): Promise<CheckInRecord[]> {
+    const res = await this.request<{ success: boolean; data: any[] }>('/checkins');
+    return res.data.map(c => ({
+      id: c._id || c.id,
+      date: c.date,
+      status: c.status,
+      completedTaskCount: c.completedTaskCount,
+      totalTaskCount: c.totalTaskCount,
+      missedReason: c.missedReason,
+      reflection: c.reflection,
+      agentAdaptation: c.agentAdaptation,
+    }));
+  }
+
   async getTodayCheckIn(): Promise<CheckInRecord | null> {
     const res = await this.request<{ success: boolean; data: any }>('/checkins/today');
     if (!res.data) return null;
@@ -308,6 +463,14 @@ class ApiService {
 
   async deleteChatConversation(id: string): Promise<void> {
     await this.request(`/chat/conversations/${id}`, { method: 'DELETE' });
+  }
+
+  async getAnalytics(clientDate?: string): Promise<UserAnalytics> {
+    const dateQuery = clientDate ? `?date=${encodeURIComponent(clientDate)}` : '';
+    const res = await this.request<{ success: boolean; data: UserAnalytics }>(`/analytics${dateQuery}`, {
+      headers: clientDate ? { 'X-Client-Date': clientDate } : {},
+    });
+    return res.data;
   }
 
   async checkHealth(): Promise<boolean> {

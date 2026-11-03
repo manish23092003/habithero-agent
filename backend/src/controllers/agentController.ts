@@ -6,6 +6,20 @@ import { AIService } from '../ai/aiService.js';
 export class AgentController {
   static async handleChatMessage(req: Request, res: Response): Promise<void> {
     try {
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (
+        isProduction &&
+        (!process.env.AGENT_SERVICE_SECRET ||
+          process.env.AGENT_SERVICE_SECRET === 'habithero_internal_secret_hackathon_2026' ||
+          process.env.AGENT_SERVICE_SECRET.length < 16)
+      ) {
+        res.status(500).json({
+          success: false,
+          error: 'Server configuration error: AGENT_SERVICE_SECRET must be securely defined in production mode.',
+        });
+        return;
+      }
+
       const secret = req.headers['x-agent-secret'];
       const expectedSecret = process.env.AGENT_SERVICE_SECRET || 'habithero_internal_secret_hackathon_2026';
 
@@ -79,4 +93,3 @@ export class AgentController {
     }
   }
 }
-

@@ -2,6 +2,8 @@
 node_modules
 .env
 .env.local
+.env.production
+.env.staging
 dist
 build
 .DS_Store
@@ -24,3 +26,9 @@ agent.private_key
 
 # Local database files
 backend/data/
+
+# Synthetic load test accounts and test benchmark artifacts
+backend/tests/load/users.json
+backend/tests/load/*.json
+backend/tests/*_results.json
+tools/

@@ -35,6 +35,7 @@ export interface DailyTask {
   difficulty: 'easy' | 'moderate' | 'challenging';
   status: TaskStatus;
   completedAt?: string;
+  completedDate?: string;
   dayNumber: number;
   scheduledFor: string;
   adaptationNote?: string;
@@ -81,6 +82,39 @@ export interface UserStats {
   totalCompletedTasks: number;
   consistencyRate: number;
   weeklyCompleted: number[];
-  recoveryResilienceScore: number;
+  recoveryResilienceScore: number | null;
+}
+
+export interface WeeklyRhythmDay {
+  day: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
+  short: string;
+  date: string;
+  completedCount: number;
+  scheduledCount: number;
+  percentage: number;
+}
+
+export interface UserAnalytics {
+  taskCompletionRate: number;
+  totalTasks: number;
+  completedTasks: number;
+  currentStreak: number;
+  longestStreak: number;
+  bounceBackRate: number | null;
+  weeklyRhythm: WeeklyRhythmDay[];
+  weeklyCompletedTotal: number;
+  categoryCounts: Record<string, number>;
+  activeGoalsCount: number;
+  totalPlannedDailyMinutes: number;
+  habitBreakdown: Array<{
+    id: string;
+    title: string;
+    category: string;
+    currentDay: number;
+    targetDays: number;
+    dailyCommitmentMinutes: number;
+    streak: number;
+    status: string;
+  }>;
 }
 

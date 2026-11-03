@@ -28,5 +28,7 @@ const ConversationSchema = new Schema<ConversationDocument>(
   }
 );
 
-export const Conversation = mongoose.model<ConversationDocument>('Conversation', ConversationSchema);
+// Compound index for fast lookup of active conversation
+ConversationSchema.index({ userId: 1, updatedAt: -1 });
 
+export const Conversation = mongoose.model<ConversationDocument>('Conversation', ConversationSchema);

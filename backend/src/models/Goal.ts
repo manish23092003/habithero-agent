@@ -82,5 +82,9 @@ const GoalSchema = new Schema<GoalDocument>(
   }
 );
 
+// Compound indexes for user goal retrieval and sorting
+GoalSchema.index({ userId: 1, createdAt: -1 });
+GoalSchema.index({ userId: 1, status: 1 });
+
 export const Goal = mongoose.model<GoalDocument>('Goal', GoalSchema);
 

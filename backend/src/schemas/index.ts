@@ -11,12 +11,26 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+export const updateProfileSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters').optional(),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Please provide a valid email address'),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(10, 'Password reset token is missing or invalid'),
+  password: z.string().min(8, 'Password must be at least 8 characters long'),
+});
+
 export const createGoalSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters').max(150),
   tagline: z.string().optional(),
   category: z.enum(['learning', 'health', 'career', 'productivity', 'mindfulness']).optional(),
   targetDays: z.number().int().min(1).max(365).optional(),
   dailyCommitmentMinutes: z.number().int().min(5).max(480).optional(),
+  idempotencyKey: z.string().optional(),
 });
 
 export const updateGoalSchema = z.object({
@@ -40,6 +54,7 @@ export const createTaskSchema = z.object({
   scheduledFor: z.string().optional(),
   dayNumber: z.number().int().min(1).optional(),
   category: z.enum(['learning', 'health', 'career', 'productivity', 'mindfulness']).optional(),
+  idempotencyKey: z.string().optional(),
 });
 
 export const updateTaskSchema = z.object({
@@ -62,4 +77,3 @@ export const createCheckInSchema = z.object({
   reflection: z.string().optional(),
   adaptTomorrow: z.boolean().optional(),
 });
-

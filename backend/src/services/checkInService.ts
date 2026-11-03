@@ -38,23 +38,39 @@ export class CheckInService {
       );
     }
 
-    const checkIn = await CheckIn.create({
-      userId: new Types.ObjectId(userId),
-      goalId: dto.goalId && Types.ObjectId.isValid(dto.goalId) ? new Types.ObjectId(dto.goalId) : undefined,
-      date: today,
+    // Atomic upsert ensuring idempotency and preventing duplicate write race conditions
+    const updateDoc: any = {
       status: dto.status,
       completedTaskCount: dto.completedTaskCount,
       totalTaskCount: dto.totalTaskCount,
-      missedReason: dto.missedReason,
-      reflection: dto.reflection || '',
-      agentAdaptation,
-    });
+    };
+    if (dto.missedReason !== undefined) updateDoc.missedReason = dto.missedReason;
+    if (dto.reflection !== undefined) updateDoc.reflection = dto.reflection;
+    if (agentAdaptation) updateDoc.agentAdaptation = agentAdaptation;
+    if (dto.goalId && Types.ObjectId.isValid(dto.goalId)) {
+      updateDoc.goalId = new Types.ObjectId(dto.goalId);
+    }
+
+    const checkIn = await CheckIn.findOneAndUpdate(
+      {
+        userId: new Types.ObjectId(userId),
+        date: today,
+      },
+      {
+        $set: updateDoc,
+        $setOnInsert: {
+          userId: new Types.ObjectId(userId),
+          date: today,
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     return checkIn;
   }
 
   static async getCheckIns(userId: string) {
-    return CheckIn.find({ userId: new Types.ObjectId(userId) }).sort({ createdAt: -1 });
+    return CheckIn.find({ userId: new Types.ObjectId(userId) }).sort({ createdAt: -1 }).lean();
   }
 
   static async getTodayCheckIn(userId: string) {
@@ -65,4 +81,3 @@ export class CheckInService {
     });
   }
 }
-

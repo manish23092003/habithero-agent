@@ -9,7 +9,8 @@ export class TaskController {
         res.status(401).json({ success: false, error: 'Unauthorized' });
         return;
       }
-      const task = await TaskService.createTask(req.user.id, req.body);
+      const idempotencyKey = (req.body?.idempotencyKey || req.headers['idempotency-key'] || req.headers['x-idempotency-key']) as string | undefined;
+      const task = await TaskService.createTask(req.user.id, { ...req.body, idempotencyKey });
       res.status(201).json({
         success: true,
         message: 'Task created successfully',
@@ -72,7 +73,8 @@ export class TaskController {
       }
       const taskId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
       const isCompleted = req.body.completed !== undefined ? req.body.completed : true;
-      const task = await TaskService.completeTask(req.user.id, taskId, isCompleted);
+      const clientDate = (req.body?.clientDate || req.headers['x-client-date']) as string | undefined;
+      const task = await TaskService.completeTask(req.user.id, taskId, isCompleted, clientDate);
       res.status(200).json({
         success: true,
         message: `Task marked as ${task.status}`,
