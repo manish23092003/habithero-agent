@@ -88,7 +88,7 @@ export const NewGoalModal: React.FC<NewGoalModalProps> = ({
       targetDays,
       currentDay: 1,
       dailyCommitmentMinutes: dailyMinutes,
-      streak: 1,
+      streak: 0,
       status: 'active',
       planOutline: generatedPhases,
       createdAt: new Date().toISOString()

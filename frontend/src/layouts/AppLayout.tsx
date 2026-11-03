@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink, Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -18,6 +18,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 
 export const AppLayout: React.FC = () => {
   const { currentUser, logout, isBackendConnected } = useAuth();
@@ -26,8 +27,54 @@ export const AppLayout: React.FC = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  // Retrieve stored streak or default to 5
-  const currentStreak = Number(localStorage.getItem('habithero_streak') || 5);
+  // Dynamic user streak calculation (default 0 for brand-new users)
+  const [currentStreak, setCurrentStreak] = useState<number>(() => {
+    const saved = localStorage.getItem('habithero_streak');
+    const parsed = saved !== null ? Number(saved) : 0;
+    return isNaN(parsed) ? 0 : parsed;
+  });
+
+  const syncStreak = useCallback(async () => {
+    if (!currentUser) {
+      setCurrentStreak(0);
+      localStorage.removeItem('habithero_streak');
+      return;
+    }
+
+    try {
+      if (isBackendConnected) {
+        const goals = await api.getGoals();
+        const maxStreak = goals.reduce((max, g) => Math.max(max, g.streak || 0), 0);
+        setCurrentStreak(maxStreak);
+        localStorage.setItem('habithero_streak', String(maxStreak));
+      } else {
+        const saved = localStorage.getItem('habithero_streak');
+        const parsed = saved !== null ? Number(saved) : 0;
+        setCurrentStreak(isNaN(parsed) ? 0 : parsed);
+      }
+    } catch {
+      setCurrentStreak(0);
+    }
+  }, [currentUser, isBackendConnected]);
+
+  useEffect(() => {
+    syncStreak();
+
+    const handleStreakUpdate = (e?: Event) => {
+      const customEvent = e as CustomEvent<{ streak: number }>;
+      if (customEvent?.detail?.streak !== undefined) {
+        setCurrentStreak(customEvent.detail.streak);
+        localStorage.setItem('habithero_streak', String(customEvent.detail.streak));
+      } else {
+        syncStreak();
+      }
+    };
+
+    window.addEventListener('habithero_streak_updated', handleStreakUpdate);
+    return () => {
+      window.removeEventListener('habithero_streak_updated', handleStreakUpdate);
+    };
+  }, [syncStreak]);
 
   // Derive breadcrumb label from current path
   const getBreadcrumbs = () => {

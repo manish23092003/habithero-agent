@@ -53,18 +53,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [refreshSession]);
 
   const login = async (email: string, password: string): Promise<AuthUser> => {
+    localStorage.removeItem('habithero_streak');
     const res = await api.login(email, password);
     setCurrentUser(res.user);
     return res.user;
   };
 
   const loginWithGoogle = async (idToken: string): Promise<{ user: AuthUser; isNewUser?: boolean }> => {
+    localStorage.removeItem('habithero_streak');
     const res = await api.googleAuth(idToken);
     setCurrentUser(res.user);
     return { user: res.user, isNewUser: res.isNewUser };
   };
 
   const register = async (name: string, email: string, password: string): Promise<AuthUser> => {
+    localStorage.removeItem('habithero_streak');
     const res = await api.register(name, email, password);
     setCurrentUser(res.user);
     return res.user;
@@ -72,6 +75,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     api.logout();
+    localStorage.removeItem('habithero_streak');
+    localStorage.removeItem('habithero_goals');
+    localStorage.removeItem('habithero_tasks');
+    window.dispatchEvent(new CustomEvent('habithero_streak_updated', { detail: { streak: 0 } }));
     setCurrentUser(null);
   };
 

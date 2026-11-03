@@ -17,7 +17,6 @@ import { Goal, DailyTask, CheckInRecord } from '../../types';
 import { DailyTaskCard } from '../../components/DailyTaskCard';
 import { DailyCheckInModal } from '../../components/DailyCheckInModal';
 import { triggerStreakMilestoneConfetti } from '../../utils/confetti';
-import { INITIAL_GOALS, INITIAL_TASKS } from '../../data/mockData';
 
 export const DashboardPage: React.FC = () => {
   const { currentUser, isBackendConnected } = useAuth();
@@ -33,7 +32,7 @@ export const DashboardPage: React.FC = () => {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      if (isBackendConnected && currentUser) {
+      if (currentUser) {
         const [dbGoals, dbTasks, dbCheckIn] = await Promise.all([
           api.getGoals().catch(() => []),
           api.getTodayTasks().catch(() => []),
@@ -42,26 +41,32 @@ export const DashboardPage: React.FC = () => {
         setGoals(dbGoals);
         setTasks(dbTasks);
         setTodayCheckIn(dbCheckIn);
+
+        // Synchronize actual user streak with layout header
+        const maxStreak = dbGoals.reduce((max, g) => Math.max(max, g.streak || 0), 0);
+        localStorage.setItem('habithero_streak', String(maxStreak));
+        window.dispatchEvent(new CustomEvent('habithero_streak_updated', { detail: { streak: maxStreak } }));
       } else {
-        // Local preview fallback
-        const savedGoals = localStorage.getItem('habithero_goals');
-        const savedTasks = localStorage.getItem('habithero_tasks');
-        setGoals(savedGoals ? JSON.parse(savedGoals) : INITIAL_GOALS);
-        setTasks(savedTasks ? JSON.parse(savedTasks) : INITIAL_TASKS);
+        // Unauthenticated or empty state: strictly 0
+        setGoals([]);
+        setTasks([]);
+        setTodayCheckIn(null);
+        localStorage.removeItem('habithero_streak');
+        window.dispatchEvent(new CustomEvent('habithero_streak_updated', { detail: { streak: 0 } }));
       }
     } finally {
       setIsLoading(false);
     }
-  }, [isBackendConnected, currentUser]);
+  }, [currentUser]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Derived metrics from real data
+  // Derived metrics from real user data (never initialized from sample defaults)
   const completedTasks = tasks.filter(t => t.status === 'completed');
   const pendingTasks = tasks.filter(t => t.status !== 'completed');
-  const currentStreak = goals.reduce((max, g) => Math.max(max, g.streak || 0), 0) || 5;
+  const currentStreak = goals.reduce((max, g) => Math.max(max, g.streak || 0), 0);
   const totalTasks = tasks.length;
   const progressPercent = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
   const nextTask = pendingTasks[0] || null;
@@ -93,6 +98,15 @@ export const DashboardPage: React.FC = () => {
     if (isBackendConnected && currentUser) {
       try {
         await api.completeTask(taskId, nowCompleted);
+        // Refresh goals to get true updated streak calculated by backend
+        const updatedGoals = await api.getGoals().catch(() => goals);
+        setGoals(updatedGoals);
+        const newMaxStreak = updatedGoals.reduce((max, g) => Math.max(max, g.streak || 0), 0);
+        localStorage.setItem('habithero_streak', String(newMaxStreak));
+        window.dispatchEvent(new CustomEvent('habithero_streak_updated', { detail: { streak: newMaxStreak } }));
+        if (newMaxStreak > 0 && nowCompleted) {
+          triggerStreakMilestoneConfetti();
+        }
       } catch (err: any) {
         console.error('Failed to update task:', err.message);
         // Rollback

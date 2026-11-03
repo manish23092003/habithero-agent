@@ -60,12 +60,43 @@ export class AnalyticsService {
 
     // 2. Streaks
     const currentStreak = goals.reduce((max, g) => Math.max(max, g.streak || 0), 0);
-    // Distinct days with activity or check-in
-    const distinctCheckInDays = new Set(checkIns.map(c => c.date)).size;
-    const distinctCompletedDays = new Set(
-      completedTasksList.map(t => t.completedDate || (t.completedAt ? new Date(t.completedAt).toISOString().split('T')[0] : null)).filter(Boolean)
-    ).size;
-    const longestStreak = Math.max(currentStreak, distinctCheckInDays, distinctCompletedDays);
+
+    // Calculate true consecutive calendar day streaks across all activity
+    const activeDates = new Set<string>();
+    completedTasksList.forEach(t => {
+      const d = t.completedDate || (t.completedAt ? new Date(t.completedAt).toISOString().split('T')[0] : null);
+      if (d) activeDates.add(d);
+    });
+    checkIns.forEach(c => {
+      if (c.date && (c.status === 'great' || c.completedTaskCount > 0)) {
+        activeDates.add(c.date);
+      }
+    });
+
+    const sortedActiveDates = Array.from(activeDates).sort();
+    let maxConsecutiveDays = 0;
+    let currentRun = 0;
+    for (let i = 0; i < sortedActiveDates.length; i++) {
+      if (i === 0) {
+        currentRun = 1;
+      } else {
+        const d1 = new Date(sortedActiveDates[i] + 'T00:00:00Z');
+        const d0 = new Date(sortedActiveDates[i - 1] + 'T00:00:00Z');
+        const diff = Math.round((d1.getTime() - d0.getTime()) / (1000 * 60 * 60 * 24));
+        if (diff === 1) {
+          currentRun++;
+        } else if (diff === 0) {
+          continue;
+        } else {
+          currentRun = 1;
+        }
+      }
+      if (currentRun > maxConsecutiveDays) {
+        maxConsecutiveDays = currentRun;
+      }
+    }
+
+    const longestStreak = Math.max(currentStreak, maxConsecutiveDays);
 
     // 3. Bounce-Back Rate (Recovery Resilience Score)
     // Percentage of times user successfully bounced back to a great day after a missed or partial check-in

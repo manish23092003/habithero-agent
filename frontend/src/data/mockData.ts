@@ -1,12 +1,12 @@
 import { Goal, DailyTask, AgentMessage, UserStats } from '../types';
 
 export const INITIAL_STATS: UserStats = {
-  currentStreak: 5,
-  longestStreak: 12,
-  totalCompletedTasks: 27,
-  consistencyRate: 88,
-  weeklyCompleted: [1, 2, 2, 1, 2, 1, 2], // Mon to Sun completion count
-  recoveryResilienceScore: 94,
+  currentStreak: 0,
+  longestStreak: 0,
+  totalCompletedTasks: 0,
+  consistencyRate: 0,
+  weeklyCompleted: [0, 0, 0, 0, 0, 0, 0], // Mon to Sun completion count
+  recoveryResilienceScore: 0,
 };
 
 export const INITIAL_GOALS: Goal[] = [
@@ -16,11 +16,11 @@ export const INITIAL_GOALS: Goal[] = [
     tagline: 'From zero to OOP concepts, Collections, and building a CLI project',
     category: 'learning',
     targetDays: 30,
-    currentDay: 8,
+    currentDay: 1,
     dailyCommitmentMinutes: 25,
-    streak: 5,
-    status: 'recovery',
-    adaptationNotice: 'Plan adapted: Reduced from 30m to 15m today after you reported a hectic schedule yesterday.',
+    streak: 0,
+    status: 'active',
+    adaptationNotice: '',
     createdAt: '2026-10-23T00:00:00.000Z',
     planOutline: [
       { phaseNumber: 1, title: 'Syntax & Core Control Flow', focus: 'Variables, loops, and conditional statements', dayRange: 'Days 1-7', tasksPlanned: 7 },
@@ -35,9 +35,9 @@ export const INITIAL_GOALS: Goal[] = [
     tagline: 'Block 30 minutes of uninterrupted study/coding before social apps',
     category: 'productivity',
     targetDays: 21,
-    currentDay: 12,
+    currentDay: 1,
     dailyCommitmentMinutes: 30,
-    streak: 12,
+    streak: 0,
     status: 'active',
     createdAt: '2026-10-19T00:00:00.000Z',
     planOutline: [
@@ -52,9 +52,9 @@ export const INITIAL_GOALS: Goal[] = [
     tagline: 'Counter computer fatigue with active spine stretching and walking',
     category: 'health',
     targetDays: 14,
-    currentDay: 4,
+    currentDay: 1,
     dailyCommitmentMinutes: 20,
-    streak: 4,
+    streak: 0,
     status: 'active',
     createdAt: '2026-10-27T00:00:00.000Z',
     planOutline: [
