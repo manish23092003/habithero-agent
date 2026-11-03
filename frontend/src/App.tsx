@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute, PublicOnlyRoute } from './components/common/ProtectedRoute';
 import { PublicLayout } from './layouts/PublicLayout';
@@ -94,6 +95,7 @@ export const App: React.FC = () => {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>
+      <Analytics />
     </BrowserRouter>
   );
 };
