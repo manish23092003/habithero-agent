@@ -26,9 +26,24 @@ const UserSchema = new Schema<UserDocument>(
       unique: true,
       trim: true,
     },
+    googleId: {
+      type: String,
+      sparse: true,
+      unique: true,
+      trim: true,
+    },
+    avatarUrl: {
+      type: String,
+      trim: true,
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
     passwordHash: {
       type: String,
-      required: [true, 'Password hash is required'],
+      required: false, // Optional for Google OAuth users who authenticate without passwords
       select: false, // Do not expose password hash in queries by default
     },
     passwordChangedAt: {

@@ -8,6 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isBackendConnected: boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
+  loginWithGoogle: (idToken: string) => Promise<{ user: AuthUser; isNewUser?: boolean }>;
   register: (name: string, email: string, password: string) => Promise<AuthUser>;
   logout: () => void;
   updateProfile: (name: string) => Promise<AuthUser>;
@@ -57,6 +58,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return res.user;
   };
 
+  const loginWithGoogle = async (idToken: string): Promise<{ user: AuthUser; isNewUser?: boolean }> => {
+    const res = await api.googleAuth(idToken);
+    setCurrentUser(res.user);
+    return { user: res.user, isNewUser: res.isNewUser };
+  };
+
   const register = async (name: string, email: string, password: string): Promise<AuthUser> => {
     const res = await api.register(name, email, password);
     setCurrentUser(res.user);
@@ -83,6 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!currentUser,
         isBackendConnected,
         login,
+        loginWithGoogle,
         register,
         logout,
         updateProfile,

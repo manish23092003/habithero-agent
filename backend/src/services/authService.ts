@@ -5,6 +5,7 @@ import { User } from '../models/User.js';
 import { PasswordResetToken } from '../models/PasswordResetToken.js';
 import { EmailService } from './emailService.js';
 import { TokenRevocationService } from './tokenRevocationService.js';
+import { GoogleAuthService } from './googleAuthService.js';
 
 const getJwtSecret = (): string => {
   const secret = process.env.JWT_SECRET;
@@ -83,6 +84,10 @@ export class AuthService {
       throw new Error('Invalid email or password');
     }
 
+    if (!user.passwordHash) {
+      throw new Error('This account was created with Google Sign-In. Please sign in with Google or use forgot password to set a password.');
+    }
+
     const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isMatch) {
       throw new Error('Invalid email or password');
@@ -102,6 +107,67 @@ export class AuthService {
         email: user.email,
         createdAt: user.createdAt,
       },
+    };
+  }
+
+  static async googleAuth(idToken: string) {
+    // 1. Verify Google ID token cryptographically
+    const googleProfile = await GoogleAuthService.verifyIdToken(idToken);
+    const normalizedEmail = googleProfile.email.toLowerCase();
+
+    // 2. Locate existing user by googleId or verified email
+    let user = await User.findOne({
+      $or: [
+        { googleId: googleProfile.googleId },
+        { email: normalizedEmail },
+      ],
+    });
+
+    let isNewUser = false;
+
+    if (user) {
+      // 3. User exists: link googleId and avatar if not present
+      let shouldSave = false;
+      if (!user.googleId) {
+        user.googleId = googleProfile.googleId;
+        shouldSave = true;
+      }
+      if (googleProfile.picture && !user.avatarUrl) {
+        user.avatarUrl = googleProfile.picture;
+        shouldSave = true;
+      }
+      if (shouldSave) {
+        await user.save();
+      }
+    } else {
+      // 4. User does not exist: create new Google user record
+      isNewUser = true;
+      user = await User.create({
+        name: googleProfile.name,
+        email: normalizedEmail,
+        googleId: googleProfile.googleId,
+        avatarUrl: googleProfile.picture,
+        authProvider: 'google',
+      });
+    }
+
+    // 5. Generate standard JWT session token
+    const token = jwt.sign(
+      { id: user._id.toString(), email: user.email, name: user.name },
+      getJwtSecret(),
+      { expiresIn: '7d' }
+    );
+
+    return {
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        createdAt: user.createdAt,
+      },
+      isNewUser,
     };
   }
 

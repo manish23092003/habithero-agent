@@ -6,6 +6,7 @@ import { PasswordResetRateLimiter } from '../middleware/passwordResetRateLimiter
 import {
   registerSchema,
   loginSchema,
+  googleAuthSchema,
   updateProfileSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
@@ -15,6 +16,7 @@ const router = Router();
 
 router.post('/register', validateRequest(registerSchema), AuthController.register);
 router.post('/login', validateRequest(loginSchema), AuthController.login);
+router.post('/google', validateRequest(googleAuthSchema), AuthController.googleAuth);
 router.post(
   '/forgot-password',
   PasswordResetRateLimiter.forgotPasswordLimit,

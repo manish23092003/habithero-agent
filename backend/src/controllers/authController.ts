@@ -35,6 +35,22 @@ export class AuthController {
     }
   }
 
+  static async googleAuth(req: Request, res: Response): Promise<void> {
+    try {
+      const result = await AuthService.googleAuth(req.body.idToken);
+      res.status(200).json({
+        success: true,
+        message: result.isNewUser ? 'Google registration successful' : 'Google login successful',
+        data: result,
+      });
+    } catch (error: any) {
+      res.status(401).json({
+        success: false,
+        error: error.message || 'Google authentication failed',
+      });
+    }
+  }
+
   static async getMe(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       if (!req.user?.id) {

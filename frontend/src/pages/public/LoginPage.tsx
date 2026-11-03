@@ -9,6 +9,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { GoogleSignInButton } from '../../components/auth/GoogleSignInButton';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -73,6 +74,21 @@ export const LoginPage: React.FC = () => {
               <span className="font-medium leading-relaxed">{error}</span>
             </div>
           )}
+
+          {/* Google Authentication */}
+          <GoogleSignInButton
+            mode="signin"
+            text="continue_with"
+            onError={(msg) => setError(msg)}
+          />
+
+          {/* Divider */}
+          <div className="relative flex items-center justify-center my-1">
+            <div className="w-full border-t border-[#E9ECE7]" />
+            <span className="absolute bg-[#FFFFFF] px-3 text-[11px] font-semibold uppercase tracking-wider text-[#8C9A91]">
+              Or continue with email
+            </span>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">

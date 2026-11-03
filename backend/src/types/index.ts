@@ -13,7 +13,10 @@ export interface IUser {
   name: string;
   email: string;
   fetchAddress?: string;
-  passwordHash: string;
+  passwordHash?: string;
+  googleId?: string;
+  avatarUrl?: string;
+  authProvider?: 'local' | 'google';
   passwordChangedAt?: Date;
   createdAt: Date;
   updatedAt: Date;

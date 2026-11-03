@@ -14,8 +14,9 @@
     "test:analytics": "cross-env NODE_ENV=test tsx --test tests/analytics.test.ts",
     "test:reset": "cross-env NODE_ENV=test tsx --test tests/passwordReset.test.ts",
     "test:hardening": "cross-env NODE_ENV=test tsx --test tests/productionHardening.test.ts",
+    "test:google": "cross-env NODE_ENV=test tsx --test tests/googleAuth.test.ts",
     "test:reliability": "cross-env NODE_ENV=test tsx tests/reliability.test.ts",
-    "test": "cross-env NODE_ENV=test tsx tests/api.test.ts && cross-env NODE_ENV=test tsx tests/agent.test.ts && cross-env NODE_ENV=test tsx tests/groq.test.ts && cross-env NODE_ENV=test tsx --test tests/analytics.test.ts && cross-env NODE_ENV=test tsx --test tests/passwordReset.test.ts && cross-env NODE_ENV=test tsx --test tests/productionHardening.test.ts"
+    "test": "cross-env NODE_ENV=test tsx tests/api.test.ts && cross-env NODE_ENV=test tsx tests/agent.test.ts && cross-env NODE_ENV=test tsx tests/groq.test.ts && cross-env NODE_ENV=test tsx --test tests/analytics.test.ts && cross-env NODE_ENV=test tsx --test tests/passwordReset.test.ts && cross-env NODE_ENV=test tsx --test tests/productionHardening.test.ts && cross-env NODE_ENV=test tsx --test tests/googleAuth.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.32.0",
@@ -28,6 +29,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "google-auth-library": "^11.3.2",
     "groq-sdk": "^1.6.0",
     "jsonwebtoken": "^9.0.2",
     "mongodb-memory-server": "^10.1.2",

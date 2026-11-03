@@ -38,6 +38,7 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  avatarUrl?: string;
   createdAt?: string;
 }
 
@@ -92,10 +93,12 @@ class ApiService {
         const isAuthEndpoint =
           cleanEndpoint.startsWith('/auth/login') ||
           cleanEndpoint.startsWith('/auth/register') ||
+          cleanEndpoint.startsWith('/auth/google') ||
           cleanEndpoint.startsWith('/auth/forgot-password') ||
           cleanEndpoint.startsWith('/auth/reset-password') ||
           cleanEndpoint.startsWith('/api/auth/login') ||
           cleanEndpoint.startsWith('/api/auth/register') ||
+          cleanEndpoint.startsWith('/api/auth/google') ||
           cleanEndpoint.startsWith('/api/auth/forgot-password') ||
           cleanEndpoint.startsWith('/api/auth/reset-password');
 
@@ -132,6 +135,15 @@ class ApiService {
     const res = await this.request<{ success: boolean; data: AuthResponse }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
+    });
+    this.setToken(res.data.token);
+    return res.data;
+  }
+
+  async googleAuth(idToken: string): Promise<AuthResponse & { isNewUser?: boolean }> {
+    const res = await this.request<{ success: boolean; data: AuthResponse & { isNewUser?: boolean } }>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
     });
     this.setToken(res.data.token);
     return res.data;

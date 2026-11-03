@@ -11,6 +11,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { api, AuthUser } from '../services/api';
+import { GoogleSignInButton } from './auth/GoogleSignInButton';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -151,14 +152,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Modal Content */}
+        <div className="p-6 space-y-4">
           {error && (
             <div className="p-3 rounded-xl bg-red-50 border border-red-200/80 text-red-800 text-xs flex items-center gap-2 animate-fade-in">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
               <span>{error}</span>
             </div>
           )}
+
+          {/* Google Authentication */}
+          <GoogleSignInButton
+            mode={mode}
+            text={mode === 'register' ? 'signup_with' : 'continue_with'}
+            onSuccess={(user) => {
+              onAuthSuccess(user);
+              onClose();
+            }}
+            onError={(msg) => setError(msg)}
+          />
+
+          {/* Divider */}
+          <div className="relative flex items-center justify-center my-1">
+            <div className="w-full border-t border-stone-200" />
+            <span className="absolute bg-white px-3 text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+              Or continue with email
+            </span>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
 
           {mode === 'register' && (
             <div className="space-y-1.5 animate-fade-in">
@@ -236,6 +258,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
           </button>
         </form>
+        </div>
       </div>
     </div>
   );
