@@ -1,18 +1,32 @@
+<div align="center">
+
 # HabitHero
 
-> **Don't just set goals. Actually achieve them.**
+<p align="center">
+  <strong>Don't just set goals. Actually achieve them.</strong>
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-7.0+-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
-[![Groq](https://img.shields.io/badge/Groq-openai%2Fgpt--oss--120b-f55036?logo=groq&logoColor=white)](https://groq.com/)
-[![Fetch.ai](https://img.shields.io/badge/Fetch.ai-uAgents_0.26.1-blueviolet?logo=ai&logoColor=white)](https://fetch.ai/)
-[![Backend Tests](https://img.shields.io/badge/Backend%20Tests-141%20Passing-success?logo=checkmarx&logoColor=white)](backend/tests/)
-[![Agent Tests](https://img.shields.io/badge/Agent%20Tests-10%20Passing-success?logo=pytest&logoColor=white)](habithero-agent/tests/)
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript&logoColor=white" alt="TypeScript" /></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white" alt="Node.js" /></a>
+  <a href="https://reactjs.org/"><img src="https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black" alt="React" /></a>
+  <a href="https://www.mongodb.com/"><img src="https://img.shields.io/badge/MongoDB-7.0+-47A248?logo=mongodb&logoColor=white" alt="MongoDB" /></a>
+  <br />
+  <a href="https://groq.com/"><img src="https://img.shields.io/badge/Groq-openai%2Fgpt--oss--120b-f55036?logo=groq&logoColor=white" alt="Groq" /></a>
+  <a href="https://fetch.ai/"><img src="https://img.shields.io/badge/Fetch.ai-uAgents_0.26.1-blueviolet?logo=ai&logoColor=white" alt="Fetch.ai" /></a>
+  <a href="backend/tests/"><img src="https://img.shields.io/badge/Backend%20Tests-141%20Passing-success?logo=checkmarx&logoColor=white" alt="Backend Tests" /></a>
+  <a href="habithero-agent/tests/"><img src="https://img.shields.io/badge/Agent%20Tests-10%20Passing-success?logo=pytest&logoColor=white" alt="Agent Tests" /></a>
+</p>
 
-HabitHero is an autonomous AI accountability companion and habit management platform. It turns ambitious goals into structured 4-phase micro-commitments, tracks streak continuity using the *"Never Miss Twice"* behavioral principle, autonomously recalibrates daily workload when life gets busy, and interfaces directly with decentralized agent ecosystems via Fetch.ai and ASI:One.
+<p align="center">
+  HabitHero is an autonomous AI accountability companion and habit management platform.<br />
+  It turns ambitious goals into structured 4-phase micro-commitments, tracks streak continuity using the<br />
+  <em>"Never Miss Twice"</em> behavioral principle, autonomously recalibrates daily workload when life gets busy,<br />
+  and interfaces directly with decentralized agent ecosystems via Fetch.ai and ASI:One.
+</p>
+
+</div>
 
 ---
 
