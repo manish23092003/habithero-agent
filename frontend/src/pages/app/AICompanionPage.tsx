@@ -25,7 +25,10 @@ const STARTER_PROMPTS = [
   "I completed yesterday's session. What's next?",
 ];
 
-const formatToolAction = (toolName: string) => {
+const formatToolAction = (toolName?: string) => {
+  if (!toolName || typeof toolName !== 'string') {
+    return 'Action completed';
+  }
   switch (toolName) {
     case 'get_today_tasks':
       return "Checked today's tasks";
@@ -37,8 +40,20 @@ const formatToolAction = (toolName: string) => {
       return 'Updated task status';
     case 'create_goal':
       return 'Created habit plan';
+    case 'complete_task':
+      return 'Completed task';
+    case 'update_goal':
+      return 'Updated habit plan';
+    case 'record_checkin':
+      return 'Recorded check-in';
+    case 'get_progress_summary':
+      return 'Checked progress';
     default:
-      return toolName.replace(/_/g, ' ');
+      try {
+        return toolName.replace(/_/g, ' ');
+      } catch {
+        return 'Action completed';
+      }
   }
 };
 
@@ -62,6 +77,7 @@ export const AICompanionPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [activeHistoryRetryId, setActiveHistoryRetryId] = useState<string | undefined>();
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [conversations, setConversations] = useState<any[]>([]);
   const [mobileConversationsOpen, setMobileConversationsOpen] = useState(false);
@@ -69,52 +85,110 @@ export const AICompanionPage: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const mapBackendMessages = (rawMessages: any[]): AgentMessage[] => {
-    return rawMessages.map(m => ({
-      id: m._id || m.id || `msg-${Date.now()}-${Math.random()}`,
-      sender: m.sender as 'user' | 'agent' | 'system',
-      content: m.content,
-      timestamp: formatMessageTimestamp(m.createdAt),
-      toolExecutions: m.toolCalls,
-      actionProposal: m.actionProposal,
-      protocolMetadata: {
-        protocol: 'fetchai_chat_v1',
-        agentAddress: 'agent1qgp9m8h4z9e5vy4z7j6v2s8k1l0w9x8p7q6r5t4',
-        verifiedOnAsi1: true,
-      },
-    }));
+    if (!Array.isArray(rawMessages)) return [];
+    return rawMessages
+      .filter(m => Boolean(m && typeof m === 'object'))
+      .map(m => {
+        // Robustly normalize tool executions across MongoDB toolCalls ({name, args}) and runtime toolExecutions ({tool, data})
+        let toolExecutions: Array<{ tool: string; success: boolean; data?: any; error?: string }> | undefined = undefined;
+
+        if (Array.isArray(m.toolCalls) && m.toolCalls.length > 0) {
+          toolExecutions = m.toolCalls
+            .filter((tc: any) => Boolean(tc))
+            .map((tc: any) => ({
+              tool:
+                typeof tc === 'object'
+                  ? typeof tc.name === 'string' && tc.name.trim()
+                    ? tc.name.trim()
+                    : typeof tc.tool === 'string' && tc.tool.trim()
+                    ? tc.tool.trim()
+                    : 'Action'
+                  : String(tc || 'Action'),
+              success: true,
+              data: tc && typeof tc === 'object' ? tc.args || tc.result || tc.data : undefined,
+            }));
+        } else if (Array.isArray(m.toolExecutions) && m.toolExecutions.length > 0) {
+          toolExecutions = m.toolExecutions
+            .filter((tc: any) => Boolean(tc))
+            .map((tc: any) => ({
+              tool:
+                typeof tc === 'object'
+                  ? typeof tc.tool === 'string' && tc.tool.trim()
+                    ? tc.tool.trim()
+                    : typeof tc.name === 'string' && tc.name.trim()
+                    ? tc.name.trim()
+                    : 'Action'
+                  : String(tc || 'Action'),
+              success: tc && typeof tc === 'object' ? tc.success !== false : true,
+              data: tc && typeof tc === 'object' ? tc.data || tc.args : undefined,
+              error: tc && typeof tc === 'object' && typeof tc.error === 'string' ? tc.error : undefined,
+            }));
+        }
+
+        return {
+          id: m._id || m.id || `msg-${Date.now()}-${Math.random()}`,
+          sender: (m.sender as 'user' | 'agent' | 'system') || 'agent',
+          content: typeof m.content === 'string' ? m.content : String(m.content || ''),
+          timestamp: formatMessageTimestamp(m.createdAt || m.timestamp),
+          toolExecutions,
+          actionProposal: m.actionProposal && typeof m.actionProposal === 'object' ? m.actionProposal : undefined,
+          protocolMetadata: {
+            protocol: 'fetchai_chat_v1',
+            agentAddress: 'agent1qgp9m8h4z9e5vy4z7j6v2s8k1l0w9x8p7q6r5t4',
+            verifiedOnAsi1: true,
+          },
+        };
+      });
   };
 
   const loadInitialChat = useCallback(async (targetConvId?: string) => {
     setLoadingHistory(true);
     setHistoryError(null);
+    setActiveHistoryRetryId(targetConvId);
     try {
       const convos = await api.getChatConversations();
-      setConversations(convos || []);
+      const safeConvos = Array.isArray(convos) ? convos : [];
+      setConversations(safeConvos);
 
-      if (convos && convos.length > 0) {
+      if (safeConvos.length > 0) {
         const selectedId =
-          targetConvId && convos.some(c => (c._id || c.id) === targetConvId)
+          targetConvId && safeConvos.some(c => (c._id || c.id) === targetConvId)
             ? targetConvId
-            : convos[0]._id || convos[0].id;
+            : safeConvos[0]._id || safeConvos[0].id;
 
-        const data = await api.getChatConversation(selectedId);
-        setConversationId(selectedId);
+        if (selectedId) {
+          setActiveHistoryRetryId(selectedId);
+          const data = await api.getChatConversation(selectedId);
+          setConversationId(selectedId);
 
-        if (data.messages && data.messages.length > 0) {
-          setMessages(mapBackendMessages(data.messages));
+          if (data && Array.isArray(data.messages) && data.messages.length > 0) {
+            setMessages(mapBackendMessages(data.messages));
+          } else {
+            setMessages([
+              {
+                id: `welcome-${selectedId}`,
+                sender: 'agent',
+                content:
+                  "Hey! Welcome back. How are you feeling today? Let's make steady progress towards your goals.",
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              },
+            ]);
+          }
+          setActiveHistoryRetryId(undefined);
         } else {
+          setConversationId(undefined);
           setMessages([
             {
-              id: `welcome-${selectedId}`,
+              id: 'welcome-fresh',
               sender: 'agent',
               content:
-                "Hey! Welcome back. How are you feeling today? Let's make steady progress towards your goals.",
+                "Hey! Welcome to HabitHero Coach. I'm here to help you build habits, plan your daily tasks, and adapt your schedule when life gets busy. What habit or goal would you like to tackle today?",
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             },
           ]);
         }
       } else {
-        // No conversations exist yet in MongoDB for this user
+        // Genuine empty conversation list: safeConvos is empty array from database
         setConversationId(undefined);
         setMessages([
           {
@@ -129,6 +203,20 @@ export const AICompanionPage: React.FC = () => {
     } catch (err: any) {
       console.error('[AICompanionPage] Failed to load chat history:', err);
       setHistoryError(err.message || 'Unable to connect to the database to load your conversations.');
+      // Do NOT discard existing conversations or messages on network failure
+      setMessages(prev =>
+        prev.length > 0
+          ? prev
+          : [
+              {
+                id: 'welcome-fallback',
+                sender: 'agent',
+                content:
+                  'Welcome to HabitHero Coach! We had a temporary hiccup loading previous conversations, but you can retry above or send a message below.',
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              },
+            ]
+      );
     } finally {
       setLoadingHistory(false);
     }
@@ -143,14 +231,16 @@ export const AICompanionPage: React.FC = () => {
   }, [messages, loading]);
 
   const handleSelectConversation = async (id: string) => {
-    if (id === conversationId || loading) return;
+    if (!id || id === conversationId || loading) return;
     setLoadingHistory(true);
+    setHistoryError(null);
+    setActiveHistoryRetryId(id);
     setMobileConversationsOpen(false);
     setFailedPromptToRetry(null);
     try {
       const data = await api.getChatConversation(id);
       setConversationId(id);
-      if (data.messages && data.messages.length > 0) {
+      if (data && Array.isArray(data.messages) && data.messages.length > 0) {
         setMessages(mapBackendMessages(data.messages));
       } else {
         setMessages([
@@ -162,10 +252,21 @@ export const AICompanionPage: React.FC = () => {
           },
         ]);
       }
+      setActiveHistoryRetryId(undefined);
     } catch (err: any) {
       console.error('[AICompanionPage] Error switching conversation:', err);
+      setHistoryError(err.message || 'Failed to switch conversation.');
+      // Existing conversations and messages remain intact in state
     } finally {
       setLoadingHistory(false);
+    }
+  };
+
+  const handleRetryHistory = () => {
+    if (activeHistoryRetryId) {
+      handleSelectConversation(activeHistoryRetryId);
+    } else {
+      loadInitialChat(conversationId);
     }
   };
 
@@ -176,21 +277,23 @@ export const AICompanionPage: React.FC = () => {
     setFailedPromptToRetry(null);
     try {
       const newConv = await api.createChatConversation('Habit Accountability Session');
-      const newId = newConv._id || newConv.id;
-      setConversationId(newId);
-      setConversations(prev => [newConv, ...prev.filter(c => (c._id || c.id) !== newId)]);
-      setMessages([
-        {
-          id: `welcome-${newId}`,
-          sender: 'agent',
-          content: 'Hey! What would you like to focus on today? Let me know how I can help.',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          protocolMetadata: {
-            protocol: 'fetchai_chat_v1',
-            agentAddress: 'agent1qgp9m8h4z9e5vy4z7j6v2s8k1l0w9x8p7q6r5t4',
+      const newId = newConv?._id || newConv?.id;
+      if (newId) {
+        setConversationId(newId);
+        setConversations(prev => [newConv, ...prev.filter(c => (c._id || c.id) !== newId)]);
+        setMessages([
+          {
+            id: `welcome-${newId}`,
+            sender: 'agent',
+            content: 'Hey! What would you like to focus on today? Let me know how I can help.',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            protocolMetadata: {
+              protocol: 'fetchai_chat_v1',
+              agentAddress: 'agent1qgp9m8h4z9e5vy4z7j6v2s8k1l0w9x8p7q6r5t4',
+            },
           },
-        },
-      ]);
+        ]);
+      }
     } catch (err) {
       console.error('[AICompanionPage] Error creating new conversation:', err);
     } finally {
@@ -200,6 +303,7 @@ export const AICompanionPage: React.FC = () => {
 
   const handleDeleteConversation = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    if (!id) return;
     if (!window.confirm('Delete this conversation history?')) return;
     try {
       await api.deleteChatConversation(id);
@@ -251,17 +355,17 @@ export const AICompanionPage: React.FC = () => {
 
     try {
       const response = await api.sendChatMessage(trimmedText, conversationId);
-      if (response.conversationId && response.conversationId !== conversationId) {
+      if (response?.conversationId && response.conversationId !== conversationId) {
         setConversationId(response.conversationId);
       }
 
       const agentMsg: AgentMessage = {
         id: `agent-${Date.now()}`,
         sender: 'agent',
-        content: response.reply,
+        content: response?.reply || 'I have processed your request.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actionProposal: response.actionProposal,
-        toolExecutions: response.toolsExecuted,
+        actionProposal: response?.actionProposal,
+        toolExecutions: response?.toolsExecuted,
         protocolMetadata: {
           protocol: 'fetchai_chat_v1',
           agentAddress: 'agent1qgp9m8h4z9e5vy4z7j6v2s8k1l0w9x8p7q6r5t4',
@@ -271,10 +375,14 @@ export const AICompanionPage: React.FC = () => {
 
       setMessages(prev => [...prev, agentMsg]);
 
-      // Silently sync conversation list so titles update in the sidebar
-      api.getChatConversations().then(convos => setConversations(convos || [])).catch(() => {});
+      // Silently sync conversation list so titles update in the sidebar without discarding
+      api.getChatConversations().then(convos => {
+        if (Array.isArray(convos) && convos.length > 0) {
+          setConversations(convos);
+        }
+      }).catch(() => {});
     } catch (err: any) {
-      setFailedPromptToRetry(text.trim());
+      setFailedPromptToRetry(trimmedText);
       const errorMsg: AgentMessage = {
         id: `err-${Date.now()}`,
         sender: 'system',
@@ -288,6 +396,7 @@ export const AICompanionPage: React.FC = () => {
   };
 
   const handleApplyProposal = async (proposal: ActionProposal) => {
+    if (!proposal?.label) return;
     await handleSendMessage(`I would like to apply this adjustment: "${proposal.label}".`);
   };
 
@@ -314,6 +423,18 @@ export const AICompanionPage: React.FC = () => {
                   <div className="h-8 bg-stone-100 rounded-lg animate-pulse" />
                   <div className="h-8 bg-stone-100 rounded-lg animate-pulse" />
                   <div className="h-8 bg-stone-100 rounded-lg animate-pulse" />
+                </div>
+              ) : historyError && conversations.length === 0 ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-center space-y-2 my-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 mx-auto" />
+                  <p className="text-[11px] text-amber-900 font-medium">Unable to load conversations</p>
+                  <button
+                    onClick={handleRetryHistory}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-600 text-white rounded-lg text-[10px] font-bold hover:bg-amber-700 transition-colors shadow-2xs"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Retry</span>
+                  </button>
                 </div>
               ) : conversations.length === 0 ? (
                 <div className="px-2 py-6 text-xs text-[#5F6F65] text-center">
@@ -388,7 +509,24 @@ export const AICompanionPage: React.FC = () => {
               </button>
 
               <div className="space-y-1 max-h-[calc(100vh-14rem)] overflow-y-auto">
-                {conversations.length === 0 ? (
+                {loadingHistory && conversations.length === 0 ? (
+                  <div className="space-y-2 p-2">
+                    <div className="h-8 bg-stone-100 rounded-lg animate-pulse" />
+                    <div className="h-8 bg-stone-100 rounded-lg animate-pulse" />
+                  </div>
+                ) : historyError && conversations.length === 0 ? (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-center space-y-2 my-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 mx-auto" />
+                    <p className="text-[11px] text-amber-900 font-medium">Unable to load conversations</p>
+                    <button
+                      onClick={handleRetryHistory}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-600 text-white rounded-lg text-[10px] font-bold hover:bg-amber-700 transition-colors shadow-2xs"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Retry</span>
+                    </button>
+                  </div>
+                ) : conversations.length === 0 ? (
                   <div className="p-4 text-xs text-[#5F6F65] text-center">No previous conversations</div>
                 ) : (
                   conversations.map(c => {
@@ -469,16 +607,17 @@ export const AICompanionPage: React.FC = () => {
         {/* Message Feed */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {historyError && (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-center justify-between gap-3 max-w-lg mx-auto">
-              <div className="flex items-center gap-2">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-center justify-between gap-3 max-w-lg mx-auto shadow-xs">
+              <div className="flex items-center gap-2 min-w-0">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>{historyError}</span>
+                <span className="truncate">{historyError}</span>
               </div>
               <button
-                onClick={() => loadInitialChat(conversationId)}
-                className="px-2.5 py-1 bg-amber-600 text-white rounded-lg text-[11px] font-bold hover:bg-amber-700 transition-colors shrink-0"
+                onClick={handleRetryHistory}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-600 text-white rounded-lg text-[11px] font-bold hover:bg-amber-700 transition-colors shrink-0 shadow-2xs"
               >
-                Retry
+                <RotateCcw className="w-3 h-3" />
+                <span>Retry</span>
               </button>
             </div>
           )}
@@ -546,18 +685,24 @@ export const AICompanionPage: React.FC = () => {
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     </div>
 
-                    {/* Tool execution pills */}
-                    {msg.toolExecutions && msg.toolExecutions.length > 0 && (
+                    {/* Tool execution pills: safely handles MongoDB toolCalls or runtime toolExecutions */}
+                    {Array.isArray(msg.toolExecutions) && msg.toolExecutions.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        {msg.toolExecutions.map((t, idx) => (
-                          <div
-                            key={idx}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#E9ECE7] rounded-lg text-[10px] font-semibold text-[#245C46]"
-                          >
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>{formatToolAction(t.tool)}</span>
-                          </div>
-                        ))}
+                        {msg.toolExecutions
+                          .filter((t): t is NonNullable<typeof t> => Boolean(t))
+                          .map((t, idx) => {
+                            const actionName =
+                              (typeof t === 'object' ? (typeof t.tool === 'string' ? t.tool : (t as any).name) : undefined) || 'Action';
+                            return (
+                              <div
+                                key={idx}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#E9ECE7] rounded-lg text-[10px] font-semibold text-[#245C46]"
+                              >
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span>{formatToolAction(actionName)}</span>
+                              </div>
+                            );
+                          })}
                       </div>
                     )}
 
@@ -566,9 +711,11 @@ export const AICompanionPage: React.FC = () => {
                       <div className="p-4 bg-white rounded-2xl border-2 border-[#245C46]/30 shadow-xs space-y-2">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-[#245C46]">
                           <Zap className="w-4 h-4 text-[#E8B96B]" />
-                          <span>Suggested adjustment: {msg.actionProposal.label}</span>
+                          <span>Suggested adjustment: {msg.actionProposal.label || 'Recommended Adjustment'}</span>
                         </div>
-                        <p className="text-xs text-[#5F6F65]">{msg.actionProposal.description}</p>
+                        {msg.actionProposal.description && (
+                          <p className="text-xs text-[#5F6F65]">{msg.actionProposal.description}</p>
+                        )}
                         <button
                           onClick={() => handleApplyProposal(msg.actionProposal!)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#245C46] text-white rounded-xl text-xs font-bold hover:bg-[#1b4736] transition-colors shadow-xs"

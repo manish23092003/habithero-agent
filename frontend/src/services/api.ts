@@ -511,6 +511,9 @@ class ApiService {
 
   async getChatConversations(): Promise<any[]> {
     const res = await this.request<{ success: boolean; data: any[] }>('/chat/conversations');
+    if (!res || !Array.isArray(res.data)) {
+      throw new Error('Invalid conversation list received from server');
+    }
     return res.data;
   }
 
@@ -523,7 +526,13 @@ class ApiService {
   }
 
   async getChatConversation(id: string): Promise<{ conversation: any; messages: any[] }> {
+    if (!id || id === 'undefined') {
+      return { conversation: null, messages: [] };
+    }
     const res = await this.request<{ success: boolean; data: { conversation: any; messages: any[] } }>(`/chat/conversations/${id}`);
+    if (!res || !res.data) {
+      throw new Error('Invalid conversation history received from server');
+    }
     return res.data;
   }
 
