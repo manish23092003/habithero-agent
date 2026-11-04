@@ -8,9 +8,9 @@ const router = Router();
 router.use(authenticateToken);
 
 router.post('/message', ChatController.sendMessage);
+router.post('/conversations', ChatController.createConversation);
 router.get('/conversations', ChatController.getConversations);
 router.get('/conversations/:id', ChatController.getConversationById);
 router.delete('/conversations/:id', ChatController.deleteConversation);
 
 export default router;
-

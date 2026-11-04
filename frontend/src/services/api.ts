@@ -514,6 +514,14 @@ class ApiService {
     return res.data;
   }
 
+  async createChatConversation(title?: string): Promise<any> {
+    const res = await this.request<{ success: boolean; data: any }>('/chat/conversations', {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    });
+    return res.data;
+  }
+
   async getChatConversation(id: string): Promise<{ conversation: any; messages: any[] }> {
     const res = await this.request<{ success: boolean; data: { conversation: any; messages: any[] } }>(`/chat/conversations/${id}`);
     return res.data;

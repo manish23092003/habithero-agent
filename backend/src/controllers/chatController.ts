@@ -64,6 +64,28 @@ export class ChatController {
     }
   }
 
+  static async createConversation(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user?.id) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const title = req.body?.title?.trim() || 'Habit Accountability Session';
+      const conversation = await ConversationService.createConversation(req.user.id, title);
+
+      res.status(201).json({
+        success: true,
+        data: conversation,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to create conversation',
+      });
+    }
+  }
+
   static async getConversations(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       if (!req.user?.id) {
