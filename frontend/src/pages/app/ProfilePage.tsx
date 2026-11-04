@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User,
   ShieldCheck,
   Lock,
   Edit2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Bot
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -13,9 +14,17 @@ export const ProfilePage: React.FC = () => {
   const { user, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user?.name || '');
+  const [fetchAddress, setFetchAddress] = useState(user?.fetchAddress || '');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setFetchAddress(user.fetchAddress || '');
+    }
+  }, [user]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +32,10 @@ export const ProfilePage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      await updateProfile(name.trim());
+      await updateProfile({
+        name: name.trim(),
+        fetchAddress: fetchAddress.trim() || undefined,
+      });
       setSuccess(true);
       setIsEditing(false);
       setTimeout(() => setSuccess(false), 3000);
@@ -91,10 +103,34 @@ export const ProfilePage: React.FC = () => {
                   />
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#26352D] mb-1">
+                  Fetch.ai Agent Address (ASI:One)
+                </label>
+                <div className="relative">
+                  <Bot className="w-4 h-4 text-[#5F6F65] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={fetchAddress}
+                    onChange={e => setFetchAddress(e.target.value)}
+                    placeholder="agent1..."
+                    className="w-full pl-10 pr-4 py-2.5 bg-[#F7F7F2] border border-[#E9ECE7] rounded-xl text-xs font-mono text-[#26352D] focus:outline-none focus:ring-2 focus:ring-[#245C46]/30"
+                  />
+                </div>
+                <p className="text-[11px] text-[#5F6F65] mt-1">
+                  Link your agent address to merge habits and tasks created through ASI:One chat.
+                </p>
+              </div>
+
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsEditing(false)}
+                  onClick={() => {
+                    setName(user?.name || '');
+                    setFetchAddress(user?.fetchAddress || '');
+                    setIsEditing(false);
+                  }}
                   className="px-3.5 py-1.5 text-xs text-[#5F6F65] hover:bg-[#F7F7F2] rounded-xl transition-colors"
                 >
                   Cancel
@@ -118,18 +154,30 @@ export const ProfilePage: React.FC = () => {
                 <button
                   onClick={() => {
                     setName(user?.name || '');
+                    setFetchAddress(user?.fetchAddress || '');
                     setIsEditing(true);
                   }}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F7F7F2] border border-[#E9ECE7] rounded-xl text-xs font-semibold text-[#26352D] hover:bg-[#E9ECE7] transition-colors"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
-                  <span>Edit Name</span>
+                  <span>Edit Profile</span>
                 </button>
               </div>
 
               <div className="py-2 border-b border-[#E9ECE7]/60">
                 <span className="text-xs text-[#5F6F65] block">Email Address</span>
                 <span className="text-xs font-mono font-medium text-[#26352D]">{user?.email}</span>
+              </div>
+
+              <div className="py-2 border-b border-[#E9ECE7]/60">
+                <span className="text-xs text-[#5F6F65] block">Fetch.ai Agent Address (ASI:One)</span>
+                {user?.fetchAddress ? (
+                  <span className="text-xs font-mono font-medium text-[#245C46] break-all">
+                    {user.fetchAddress}
+                  </span>
+                ) : (
+                  <span className="text-xs text-[#5F6F65] italic">Not linked yet</span>
+                )}
               </div>
 
               <div className="py-2 border-b border-[#E9ECE7]/60">

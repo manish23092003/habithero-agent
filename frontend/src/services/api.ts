@@ -38,6 +38,7 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  fetchAddress?: string;
   avatarUrl?: string;
   createdAt?: string;
 }
@@ -154,10 +155,11 @@ class ApiService {
     return res.data;
   }
 
-  async updateProfile(name: string): Promise<AuthUser> {
+  async updateProfile(data: string | { name?: string; fetchAddress?: string }): Promise<AuthUser> {
+    const payload = typeof data === 'string' ? { name: data } : data;
     const res = await this.request<{ success: boolean; data: AuthUser }>('/auth/me', {
       method: 'PATCH',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(payload),
     });
     return res.data;
   }

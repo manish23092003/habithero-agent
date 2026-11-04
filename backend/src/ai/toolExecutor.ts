@@ -81,8 +81,41 @@ export class ToolExecutor {
       return { tool: 'create_goal', success: false, error: 'Goal title is required' };
     }
 
+    const cleanTitle = args.title.trim();
+
+    // Prevent duplicate goal and kickoff task creation if user already has an active goal with the same title
+    const existingActiveGoal = await Goal.findOne({
+      userId: new Types.ObjectId(userId),
+      title: { $regex: new RegExp(`^${cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+      status: 'active',
+    });
+
+    if (existingActiveGoal) {
+      const existingTask = await Task.findOne({
+        goalId: existingActiveGoal._id,
+        userId: new Types.ObjectId(userId),
+      }).sort({ dayNumber: 1 });
+
+      return {
+        tool: 'create_goal',
+        success: true,
+        data: {
+          alreadyExists: true,
+          goalId: existingActiveGoal._id.toString(),
+          title: existingActiveGoal.title,
+          category: existingActiveGoal.category,
+          targetDays: existingActiveGoal.targetDays,
+          dailyCommitmentMinutes: existingActiveGoal.dailyCommitmentMinutes,
+          phasesCount: existingActiveGoal.planOutline?.length || 0,
+          initialTaskId: existingTask?._id?.toString() || '',
+          initialTaskTitle: existingTask?.title || '',
+          message: `Active goal "${existingActiveGoal.title}" already exists. Reusing existing goal plan to prevent duplicate creation.`,
+        },
+      };
+    }
+
     const result = await GoalService.createGoal(userId, {
-      title: args.title.trim(),
+      title: cleanTitle,
       tagline: args.tagline?.trim(),
       category: args.category || 'learning',
       targetDays: Number(args.targetDays) || 30,

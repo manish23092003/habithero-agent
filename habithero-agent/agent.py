@@ -10,6 +10,7 @@ from uagents_core.contrib.protocols.chat import (
 )
 from config import (
     AGENT_NAME,
+    AGENT_HANDLE,
     AGENT_SEED,
     AGENT_PORT,
     AGENT_MAILBOX_KEY,
@@ -48,6 +49,8 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
         for item in msg.content:
             if hasattr(item, "text") and item.text:
                 text_content += item.text.strip() + " "
+            elif isinstance(item, dict) and item.get("text"):
+                text_content += str(item["text"]).strip() + " "
     text_content = text_content.strip()
 
     # 3. Handle empty message edge case
@@ -101,6 +104,7 @@ def create_agent(
     seed: str = AGENT_SEED,
     port: int = AGENT_PORT,
     mailbox_key: str | None = AGENT_MAILBOX_KEY,
+    handle: str | None = AGENT_HANDLE,
 ) -> Agent:
     """
     Create and configure the HabitHero Fetch.ai uAgent with Chat Protocol 0.3.0 and Agentverse capabilities.
@@ -110,6 +114,7 @@ def create_agent(
         seed=seed,
         port=port,
         mailbox=mailbox_key if mailbox_key else True,
+        handle=handle,
         publish_agent_details=True,
         description="An AI companion that helps people build consistent habits through personalized plans, daily check-ins, progress tracking and adaptive accountability.",
     )
@@ -124,4 +129,6 @@ agent = create_agent()
 if __name__ == "__main__":
     logger.info(f"Starting HabitHero uAgent '{agent.name}' on port {AGENT_PORT}")
     logger.info(f"Agent Address: {agent.address}")
+    if agent._handle:
+        logger.info(f"Agent Handle: @{agent._handle}")
     agent.run()

@@ -1,8 +1,14 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import { User } from '../models/User.js';
 import { PasswordResetToken } from '../models/PasswordResetToken.js';
+import { Goal } from '../models/Goal.js';
+import { Task } from '../models/Task.js';
+import { Conversation } from '../models/Conversation.js';
+import { Message } from '../models/Message.js';
+import { CheckIn } from '../models/CheckIn.js';
 import { EmailService } from './emailService.js';
 import { TokenRevocationService } from './tokenRevocationService.js';
 import { GoogleAuthService } from './googleAuthService.js';
@@ -180,23 +186,162 @@ export class AuthService {
       id: user._id.toString(),
       name: user.name,
       email: user.email,
+      fetchAddress: user.fetchAddress,
+      avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
     };
   }
 
-  static async updateMe(userId: string, data: { name?: string }) {
+  /**
+   * Safely merges an auto-provisioned placeholder ASI account into a destination web user account.
+   * Requires a MongoDB transaction in production to guarantee atomic reassignment and deletion.
+   * In production, non-transactional fallback is strictly prohibited. If transactions are unavailable
+   * or fail, operations fail safely without modifying account data.
+   */
+  private static async mergePlaceholderAccount(
+    destinationUser: any,
+    placeholderUser: any,
+    normalizedAddress: string
+  ): Promise<void> {
+    const destUserId = destinationUser._id;
+    const sourceUserId = placeholderUser._id;
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Snapshot existing IDs for rollback safety (used in dev/test fallback if transactions are unsupported)
+    const [goalIds, taskIds, convIds, msgIds, checkInIds] = await Promise.all([
+      Goal.find({ userId: sourceUserId }).distinct('_id'),
+      Task.find({ userId: sourceUserId }).distinct('_id'),
+      Conversation.find({ userId: sourceUserId }).distinct('_id'),
+      Message.find({ userId: sourceUserId }).distinct('_id'),
+      CheckIn.find({ userId: sourceUserId }).distinct('_id'),
+    ]);
+
+    let session: mongoose.ClientSession | null = null;
+    let transactionCommitted = false;
+
+    try {
+      session = await mongoose.startSession();
+    } catch (err: any) {
+      if (isProduction) {
+        throw new Error(`Database transaction unavailable in production: ${err.message || 'Cannot start session'}. Account linking aborted.`);
+      }
+      session = null;
+    }
+
+    if (session) {
+      try {
+        await session.withTransaction(async () => {
+          await Goal.updateMany({ userId: sourceUserId }, { $set: { userId: destUserId } }, { session });
+          await Task.updateMany({ userId: sourceUserId }, { $set: { userId: destUserId } }, { session });
+          await Conversation.updateMany({ userId: sourceUserId }, { $set: { userId: destUserId } }, { session });
+          await Message.updateMany({ userId: sourceUserId }, { $set: { userId: destUserId } }, { session });
+          await CheckIn.updateMany({ userId: sourceUserId }, { $set: { userId: destUserId } }, { session });
+
+          // Release the unique fetchAddress index by deleting the placeholder within the transaction boundary
+          await User.deleteOne({ _id: sourceUserId }, { session });
+
+          destinationUser.fetchAddress = normalizedAddress;
+          await destinationUser.save({ session });
+        });
+        transactionCommitted = true;
+      } catch (txnError: any) {
+        const isUnsupported =
+          txnError.message?.includes('replica set') ||
+          txnError.message?.includes('Transaction numbers are only allowed') ||
+          txnError.code === 263 ||
+          txnError.codeName === 'OperationNotSupportedInTransaction';
+
+        if (isProduction || !isUnsupported) {
+          // In production or on genuine transaction errors, fail safely without modifying data
+          throw txnError;
+        }
+      } finally {
+        await session.endSession();
+      }
+    }
+
+    if (!transactionCommitted) {
+      if (isProduction) {
+        throw new Error('Fetch.ai account linking strictly requires a successful MongoDB transaction in production. Operations aborted safely without modifying account data.');
+      }
+
+      // Standalone dev/test fallback path with compensating rollback when transactions are unsupported by the local environment
+      await User.updateOne({ _id: sourceUserId }, { $unset: { fetchAddress: 1 } });
+
+      try {
+        if (goalIds.length > 0) {
+          await Goal.updateMany({ _id: { $in: goalIds } }, { $set: { userId: destUserId } });
+        }
+        if (taskIds.length > 0) {
+          await Task.updateMany({ _id: { $in: taskIds } }, { $set: { userId: destUserId } });
+        }
+        if (convIds.length > 0) {
+          await Conversation.updateMany({ _id: { $in: convIds } }, { $set: { userId: destUserId } });
+        }
+        if (msgIds.length > 0) {
+          await Message.updateMany({ _id: { $in: msgIds } }, { $set: { userId: destUserId } });
+        }
+        if (checkInIds.length > 0) {
+          await CheckIn.updateMany({ _id: { $in: checkInIds } }, { $set: { userId: destUserId } });
+        }
+
+        destinationUser.fetchAddress = normalizedAddress;
+        await destinationUser.save();
+
+        // Delete the placeholder user only AFTER destination user save has succeeded
+        await User.deleteOne({ _id: sourceUserId });
+      } catch (err) {
+        // Compensating rollback: restore records and restore placeholder fetchAddress
+        await Promise.allSettled([
+          User.updateOne({ _id: sourceUserId }, { $set: { fetchAddress: normalizedAddress } }),
+          goalIds.length > 0 ? Goal.updateMany({ _id: { $in: goalIds } }, { $set: { userId: sourceUserId } }) : Promise.resolve(),
+          taskIds.length > 0 ? Task.updateMany({ _id: { $in: taskIds } }, { $set: { userId: sourceUserId } }) : Promise.resolve(),
+          convIds.length > 0 ? Conversation.updateMany({ _id: { $in: convIds } }, { $set: { userId: sourceUserId } }) : Promise.resolve(),
+          msgIds.length > 0 ? Message.updateMany({ _id: { $in: msgIds } }, { $set: { userId: sourceUserId } }) : Promise.resolve(),
+          checkInIds.length > 0 ? CheckIn.updateMany({ _id: { $in: checkInIds } }, { $set: { userId: sourceUserId } }) : Promise.resolve(),
+        ]);
+        throw err;
+      }
+    }
+  }
+
+  static async updateMe(userId: string, data: { name?: string; fetchAddress?: string }) {
     const user = await User.findById(userId);
     if (!user) {
       throw new Error('User not found');
     }
     if (data.name && data.name.trim()) {
       user.name = data.name.trim();
+    }
+    if (data.fetchAddress !== undefined) {
+      const normalizedAddress = data.fetchAddress.trim();
+      if (normalizedAddress === '') {
+        user.fetchAddress = undefined;
+        await user.save();
+      } else {
+        const existingWithAddress = await User.findOne({ fetchAddress: normalizedAddress });
+        if (existingWithAddress && !existingWithAddress._id.equals(user._id)) {
+          // If the existing user is an auto-provisioned placeholder ASI user, safely merge records
+          if (existingWithAddress.email.endsWith('@fetchai.agent') && !existingWithAddress.googleId) {
+            await AuthService.mergePlaceholderAccount(user, existingWithAddress, normalizedAddress);
+          } else {
+            throw new Error('This Fetch.ai address is already linked to another HabitHero account');
+          }
+        } else {
+          user.fetchAddress = normalizedAddress;
+          await user.save();
+        }
+      }
+    } else {
       await user.save();
     }
+
     return {
       id: user._id.toString(),
       name: user.name,
       email: user.email,
+      fetchAddress: user.fetchAddress,
+      avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
     };
   }

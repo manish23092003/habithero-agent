@@ -11,7 +11,7 @@ interface AuthContextType {
   loginWithGoogle: (idToken: string) => Promise<{ user: AuthUser; isNewUser?: boolean }>;
   register: (name: string, email: string, password: string) => Promise<AuthUser>;
   logout: () => void;
-  updateProfile: (name: string) => Promise<AuthUser>;
+  updateProfile: (data: string | { name?: string; fetchAddress?: string }) => Promise<AuthUser>;
   refreshSession: () => Promise<void>;
 }
 
@@ -82,8 +82,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(null);
   };
 
-  const updateProfile = async (name: string): Promise<AuthUser> => {
-    const updatedUser = await api.updateProfile(name);
+  const updateProfile = async (data: string | { name?: string; fetchAddress?: string }): Promise<AuthUser> => {
+    const updatedUser = await api.updateProfile(data);
     setCurrentUser(updatedUser);
     return updatedUser;
   };

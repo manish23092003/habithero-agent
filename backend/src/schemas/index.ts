@@ -17,6 +17,11 @@ export const googleAuthSchema = z.object({
 
 export const updateProfileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').optional(),
+  fetchAddress: z
+    .string()
+    .trim()
+    .regex(/^agent1[a-z0-9]{50,70}$/, 'Invalid Fetch.ai agent address format (must start with agent1)')
+    .optional(),
 });
 
 export const forgotPasswordSchema = z.object({

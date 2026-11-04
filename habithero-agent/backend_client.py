@@ -1,7 +1,8 @@
 import logging
+import asyncio
 from typing import Optional, Dict, Any
 import aiohttp
-from config import BACKEND_URL, AGENT_SERVICE_SECRET
+from config import BACKEND_URL, AGENT_SERVICE_SECRET, get_health_url
 
 logger = logging.getLogger("HabitHeroBackendClient")
 
@@ -9,11 +10,89 @@ class BackendClient:
     """
     Client for forwarding messages between the Fetch.ai uAgent and the HabitHero Node.js backend.
     Preserves sender identity isolation and secures service-to-service communication.
+    Includes proactive health checks and robust failure handling.
     """
 
-    def __init__(self, backend_url: str = BACKEND_URL, service_secret: str = AGENT_SERVICE_SECRET):
+    def __init__(
+        self,
+        backend_url: str = BACKEND_URL,
+        service_secret: str = AGENT_SERVICE_SECRET,
+        health_url: Optional[str] = None
+    ):
         self.backend_url = backend_url
         self.service_secret = service_secret
+        self.health_url = health_url or get_health_url(self.backend_url)
+
+    async def check_health(self, timeout_sec: float = 3.0) -> Dict[str, Any]:
+        """
+        Check whether the HabitHero backend API is running and reachable.
+        Queries GET /api/health with a short timeout.
+        """
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    self.health_url,
+                    timeout=aiohttp.ClientTimeout(total=timeout_sec)
+                ) as resp:
+                    if resp.status == 200:
+                        try:
+                            data = await resp.json()
+                        except Exception:
+                            data = {}
+                        return {
+                            "available": True,
+                            "status": resp.status,
+                            "data": data,
+                        }
+                    elif resp.status == 503:
+                        # Service is up but degraded (e.g. database connecting)
+                        try:
+                            data = await resp.json()
+                        except Exception:
+                            data = {}
+                        logger.warning(
+                            f"HabitHero backend at {self.health_url} returned 503 degraded: {data}"
+                        )
+                        return {
+                            "available": True,
+                            "degraded": True,
+                            "status": resp.status,
+                            "data": data,
+                        }
+                    else:
+                        error_body = await resp.text()
+                        logger.warning(
+                            f"Backend health check at {self.health_url} returned status {resp.status}: {error_body}"
+                        )
+                        return {
+                            "available": False,
+                            "status": resp.status,
+                            "error": f"HTTP {resp.status}: {error_body}",
+                        }
+        except aiohttp.ClientConnectorError as conn_err:
+            logger.warning(
+                f"HabitHero backend health check failed at {self.health_url}: Connection refused ({conn_err})"
+            )
+            return {
+                "available": False,
+                "error": f"Cannot connect to host: {conn_err}",
+            }
+        except asyncio.TimeoutError:
+            logger.warning(
+                f"HabitHero backend health check timed out after {timeout_sec}s at {self.health_url}"
+            )
+            return {
+                "available": False,
+                "error": f"Health check timed out after {timeout_sec}s",
+            }
+        except Exception as e:
+            logger.warning(
+                f"Unexpected error during backend health check at {self.health_url}: {e}"
+            )
+            return {
+                "available": False,
+                "error": str(e),
+            }
 
     async def forward_to_backend(
         self,
@@ -23,7 +102,25 @@ class BackendClient:
     ) -> Dict[str, Any]:
         """
         Send a chat message to the HabitHero backend and receive AI analysis & tool executions.
+        Performs a backend health check first, then delivers the payload.
         """
+        # 1. Proactive backend health check
+        health = await self.check_health()
+        if not health.get("available"):
+            logger.warning(
+                f"Skipping chat forward to {self.backend_url}: Backend is unreachable at {self.health_url} ({health.get('error')})"
+            )
+            return {
+                "success": False,
+                "backend_available": False,
+                "reply": (
+                    "I cannot reach the HabitHero accountability engine right now. "
+                    "Please ensure the backend server is running on port 5000 and try again in a moment."
+                ),
+                "error": f"Backend health check failed: {health.get('error')}",
+            }
+
+        # 2. Forward payload to backend chat endpoint
         payload = {
             "sender": sender,
             "message": message,
@@ -50,6 +147,7 @@ class BackendClient:
                         logger.info(f"Successfully processed message for sender {sender}")
                         return {
                             "success": True,
+                            "backend_available": True,
                             "reply": backend_data.get("reply", "Message processed."),
                             "conversationId": backend_data.get("conversationId"),
                             "toolsExecuted": backend_data.get("toolsExecuted", []),
@@ -59,17 +157,31 @@ class BackendClient:
                     else:
                         error_text = await response.text()
                         logger.error(f"Backend returned status {response.status}: {error_text}")
+                        if response.status == 401:
+                            reply_msg = "HabitHero internal authorization failed. Please check the AGENT_SERVICE_SECRET configuration."
+                        else:
+                            reply_msg = "I encountered an issue processing your habits with my backend engine. Please try again."
                         return {
                             "success": False,
-                            "reply": "I encountered an issue checking your habits. My engine returned an error.",
+                            "backend_available": True,
+                            "reply": reply_msg,
                             "error": f"HTTP {response.status}: {error_text}",
                         }
         except aiohttp.ClientConnectorError as conn_err:
             logger.error(f"Cannot connect to HabitHero backend at {self.backend_url}: {conn_err}")
             return {
                 "success": False,
+                "backend_available": False,
                 "reply": "I cannot reach the HabitHero backend right now. Please ensure the backend server is running on port 5000.",
                 "error": str(conn_err),
+            }
+        except asyncio.TimeoutError:
+            logger.error(f"HabitHero backend request timed out at {self.backend_url}")
+            return {
+                "success": False,
+                "backend_available": True,
+                "reply": "My accountability engine is taking longer than usual to respond. Please try again in a moment.",
+                "error": "Request timed out",
             }
         except Exception as e:
             logger.error(f"Unexpected error communicating with backend: {e}")
@@ -81,4 +193,3 @@ class BackendClient:
 
 # Default singleton instance
 backend_client = BackendClient()
-
