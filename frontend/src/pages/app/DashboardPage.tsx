@@ -9,7 +9,12 @@ import {
   Plus, 
   ShieldCheck, 
   Bot, 
-  Loader2 
+  Loader2,
+  BookOpen,
+  Activity,
+  Briefcase,
+  Smile,
+  ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -17,6 +22,54 @@ import { Goal, DailyTask, CheckInRecord } from '../../types';
 import { DailyTaskCard } from '../../components/DailyTaskCard';
 import { DailyCheckInModal } from '../../components/DailyCheckInModal';
 import { triggerStreakMilestoneConfetti } from '../../utils/confetti';
+
+const ZERO_STATE_TEMPLATES = [
+  {
+    id: 'reading',
+    title: 'Daily Reading',
+    category: 'learning',
+    dailyMinutes: 15,
+    targetDays: 30,
+    description: 'Read technical docs, books, or articles for 15 focused minutes.',
+    icon: BookOpen,
+  },
+  {
+    id: 'deep-work',
+    title: 'Deep Work',
+    category: 'productivity',
+    dailyMinutes: 20,
+    targetDays: 30,
+    description: 'A 20-minute uninterrupted focus sprint on your highest-priority project.',
+    icon: Target,
+  },
+  {
+    id: 'movement',
+    title: 'Morning Movement',
+    category: 'health',
+    dailyMinutes: 15,
+    targetDays: 30,
+    description: 'Light mobility, walking, posture correction, or bodyweight exercises.',
+    icon: Activity,
+  },
+  {
+    id: 'code-practice',
+    title: 'Code Practice',
+    category: 'career',
+    dailyMinutes: 30,
+    targetDays: 30,
+    description: 'Hands-on problem solving, feature building, or algorithmic study.',
+    icon: Briefcase,
+  },
+  {
+    id: 'wind-down',
+    title: 'Evening Wind-down',
+    category: 'mindfulness',
+    dailyMinutes: 10,
+    targetDays: 30,
+    description: 'Disconnect from screens, reflect on wins, and prepare for restful sleep.',
+    icon: Smile,
+  },
+];
 
 export const DashboardPage: React.FC = () => {
   const { currentUser, isBackendConnected } = useAuth();
@@ -215,6 +268,130 @@ export const DashboardPage: React.FC = () => {
         <p className="text-xs text-[#5F6F65] font-medium">
           Loading your habits and tasks...
         </p>
+      </div>
+    );
+  }
+
+  // Zero-Habit Onboarding Experience: shown when user has zero active goals
+  if (goals.length === 0) {
+    return (
+      <div className="space-y-6 max-w-5xl mx-auto animate-fade-in">
+        {/* Zero-Habit Hero Banner */}
+        <section className="rounded-3xl border border-[#E9ECE7] bg-white p-6 sm:p-10 shadow-sm relative overflow-hidden">
+          <div className="max-w-2xl space-y-4">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-[#245C46] bg-[#DCEBDD]/60 border border-[#245C46]/20">
+              <Sparkles className="w-3.5 h-3.5 text-[#245C46]" />
+              <span>Welcome to HabitHero, {currentUser?.name?.split(' ')[0] || 'Friend'}</span>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#26352D] leading-tight">
+              Let's build your first habit.
+            </h1>
+
+            <p className="text-xs sm:text-sm text-[#5F6F65] leading-relaxed">
+              HabitHero turns ambitious goals into gentle, manageable daily actions. Small 15-minute daily commitments build lasting consistency without burnout, with personal coaching to adapt when life gets busy.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <Link
+                to="/onboarding"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-xs sm:text-sm font-bold bg-[#245C46] hover:bg-[#1d4a38] text-white shadow-subtle transition-all active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create My First Habit</span>
+              </Link>
+
+              <Link
+                to="/app/ai-companion"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-semibold bg-[#F7F7F2] hover:bg-[#E9ECE7] text-[#26352D] border border-[#E9ECE7] transition-all"
+              >
+                <Bot className="w-4 h-4 text-[#245C46]" />
+                <span>Brainstorm with Coach</span>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Starter Habit Shortcuts */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-[#5F6F65]">
+              Popular Starter Habits
+            </h2>
+            <span className="text-xs text-[#5F6F65]">Choose a template to quick-start</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {ZERO_STATE_TEMPLATES.map(shortcut => {
+              const Icon = shortcut.icon;
+              return (
+                <Link
+                  key={shortcut.id}
+                  to={`/app/habits/new?title=${encodeURIComponent(shortcut.title)}&category=${shortcut.category}&minutes=${shortcut.dailyMinutes}&days=${shortcut.targetDays}`}
+                  className="group p-4 bg-white rounded-2xl border border-[#E9ECE7] hover:border-[#245C46]/50 hover:shadow-sm transition-all flex flex-col justify-between space-y-3 cursor-pointer"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-9 h-9 rounded-xl bg-[#F7F7F2] text-[#245C46] group-hover:bg-[#DCEBDD] flex items-center justify-center transition-colors">
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#F7F7F2] text-[#245C46] border border-[#E9ECE7]">
+                        {shortcut.dailyMinutes}m / day
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#26352D] group-hover:text-[#245C46] transition-colors">
+                        {shortcut.title}
+                      </h3>
+                      <p className="text-xs text-[#5F6F65] mt-0.5 line-clamp-2 leading-relaxed">
+                        {shortcut.description}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-semibold text-[#245C46] pt-2 border-t border-[#E9ECE7]/60">
+                    <span className="capitalize text-[11px] text-[#5F6F65]">{shortcut.category}</span>
+                    <span className="inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                      Start Habit <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 3 Core Value Props */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          <div className="p-4 bg-white rounded-2xl border border-[#E9ECE7] space-y-1.5">
+            <div className="w-8 h-8 rounded-xl bg-[#DCEBDD] text-[#245C46] flex items-center justify-center font-bold text-xs">
+              1
+            </div>
+            <h3 className="text-xs font-bold text-[#26352D]">Gentle Daily Kickoffs</h3>
+            <p className="text-[11px] text-[#5F6F65] leading-relaxed">
+              Every habit begins with a realistic, manageable Day 1 task. No intimidating 2-hour workout or marathon study blocks.
+            </p>
+          </div>
+
+          <div className="p-4 bg-white rounded-2xl border border-[#E9ECE7] space-y-1.5">
+            <div className="w-8 h-8 rounded-xl bg-[#FDF6EB] text-[#E8B96B] flex items-center justify-center font-bold text-xs">
+              2
+            </div>
+            <h3 className="text-xs font-bold text-[#26352D]">Adaptive Scaling</h3>
+            <p className="text-[11px] text-[#5F6F65] leading-relaxed">
+              When life gets busy, your habit plan scales down gracefully so you maintain momentum and protect your streak.
+            </p>
+          </div>
+
+          <div className="p-4 bg-white rounded-2xl border border-[#E9ECE7] space-y-1.5">
+            <div className="w-8 h-8 rounded-xl bg-[#E9ECE7] text-[#26352D] flex items-center justify-center font-bold text-xs">
+              3
+            </div>
+            <h3 className="text-xs font-bold text-[#26352D]">AI Habit Coach</h3>
+            <p className="text-[11px] text-[#5F6F65] leading-relaxed">
+              Chat with your personal Fetch.ai accountability companion whenever you want to adjust your schedule or reflect on progress.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

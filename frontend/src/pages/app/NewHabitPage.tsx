@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Sparkles,
@@ -29,14 +29,21 @@ const DURATION_OPTIONS = [5, 10, 15, 25, 45, 60];
 
 export const NewHabitPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const initialTitle = searchParams.get('title') || '';
+  const initialCategory = (searchParams.get('category') as GoalCategory) || 'learning';
+  const initialMinutes = Number(searchParams.get('minutes')) || 15;
+  const initialDays = Number(searchParams.get('days')) || 30;
+
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Form state
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(initialTitle);
   const [tagline, setTagline] = useState('');
-  const [category, setCategory] = useState<GoalCategory>('learning');
-  const [targetDays, setTargetDays] = useState<number>(30);
-  const [dailyCommitmentMinutes, setDailyCommitmentMinutes] = useState<number>(15);
+  const [category, setCategory] = useState<GoalCategory>(initialCategory);
+  const [targetDays, setTargetDays] = useState<number>(initialDays);
+  const [dailyCommitmentMinutes, setDailyCommitmentMinutes] = useState<number>(initialMinutes);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,35 +51,33 @@ export const NewHabitPage: React.FC = () => {
     typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `goal_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
   );
 
-  // Generate preview roadmap phases dynamically
+  // Generate preview roadmap phases dynamically matching backend 3-phase structure
+  const p1Days = Math.max(3, Math.round(targetDays * 0.25));
+  const p2Days = Math.max(4, Math.round(targetDays * 0.3));
+  const p2End = Math.round(targetDays * 0.55);
+  const p3Days = Math.max(4, targetDays - p2End);
+
   const previewPhases: HabitPhase[] = [
     {
       phaseNumber: 1,
-      title: 'Getting Started',
-      dayRange: `Days 1 - ${Math.round(targetDays * 0.25)}`,
-      focus: `Get comfortable with your routine in gentle ${dailyCommitmentMinutes}-minute sessions.`,
-      tasksPlanned: Math.round(targetDays * 0.25),
+      title: 'Foundational Consistency',
+      dayRange: `Days 1 - ${p1Days}`,
+      focus: `Establish a frictionless daily habit with gentle ${dailyCommitmentMinutes}-minute sessions.`,
+      tasksPlanned: p1Days,
     },
     {
       phaseNumber: 2,
-      title: 'Building Consistency',
-      dayRange: `Days ${Math.round(targetDays * 0.25) + 1} - ${Math.round(targetDays * 0.55)}`,
-      focus: 'Make your habit a natural part of your daily routine and build your streak.',
-      tasksPlanned: Math.round(targetDays * 0.3),
+      title: 'Competency & Sustained Flow',
+      dayRange: `Days ${p1Days + 1} - ${p2End}`,
+      focus: 'Make your routine a natural daily reflex and build streak momentum.',
+      tasksPlanned: p2Days,
     },
     {
       phaseNumber: 3,
-      title: 'Deepening Your Practice',
-      dayRange: `Days ${Math.round(targetDays * 0.55) + 1} - ${Math.round(targetDays * 0.85)}`,
-      focus: 'Gradually deepen your practice while keeping it enjoyable and steady.',
-      tasksPlanned: Math.round(targetDays * 0.3),
-    },
-    {
-      phaseNumber: 4,
-      title: 'Making It Last',
-      dayRange: `Days ${Math.round(targetDays * 0.85) + 1} - ${targetDays}`,
-      focus: 'Turn your practice into a lasting part of your everyday life.',
-      tasksPlanned: targetDays - Math.round(targetDays * 0.85),
+      title: 'Synthesis & Real Output',
+      dayRange: `Days ${p2End + 1} - ${targetDays}`,
+      focus: 'Turn your practice into a lasting, effortless part of your everyday life.',
+      tasksPlanned: p3Days,
     },
   ];
 
@@ -314,9 +319,9 @@ export const NewHabitPage: React.FC = () => {
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#E9ECE7] shadow-sm space-y-6 animate-fade-in">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-[#245C46]">Step 3: Plan Overview</span>
-            <h2 className="text-xl sm:text-2xl font-bold text-[#26352D] mt-1">Your 4-Step Journey</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-[#26352D] mt-1">Your 3-Phase Journey</h2>
             <p className="text-xs text-[#5F6F65] mt-1">
-              Your habit is organized into 4 clear phases so you can make steady, sustainable progress.
+              Your habit is organized into 3 clear phases so you can make steady, sustainable progress.
             </p>
           </div>
 
