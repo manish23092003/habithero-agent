@@ -298,3 +298,85 @@ async def test_full_message_flow_offline_fallback():
     reply_text = reply.content[0].text
     # When backend is offline, reply explains availability or accountability engine status
     assert len(reply_text) > 0
+
+
+@pytest.mark.asyncio
+async def test_unhandled_exception_fallback_delivers_chat_message():
+    """Verify that even if forward_to_backend throws an unhandled exception, a fallback ChatMessage is sent so ASI:One does not freeze."""
+    from unittest.mock import patch
+
+    ctx = MockContext()
+    sender = f"agent1qflow_crash_{uuid.uuid4().hex[:8]}"
+    incoming_msg = ChatMessage(
+        timestamp=datetime.now(timezone.utc),
+        msg_id=uuid.uuid4(),
+        content=[TextContent(type="text", text="Crashing query test")]
+    )
+
+    with patch("agent.backend_client.forward_to_backend", side_effect=RuntimeError("Simulated unhandled pipeline failure")):
+        await handle_chat_message(ctx, sender, incoming_msg)
+
+    # Should have sent ChatAcknowledgement and fallback ChatMessage
+    assert len(ctx.sent_messages) == 2
+    reply = ctx.sent_messages[1]["message"]
+    assert isinstance(reply, ChatMessage)
+    assert len(reply.content) > 0
+    assert "momentary issue" in reply.content[0].text or "Please try" in reply.content[0].text
+
+
+@pytest.mark.asyncio
+async def test_ack_delivery_failure_resilience():
+    """Verify that if sending ChatAcknowledgement raises an exception, the agent still delivers the final ChatMessage response."""
+    class FlakyAckMockContext(MockContext):
+        async def send(self, destination: str, message: object) -> None:
+            if isinstance(message, ChatAcknowledgement):
+                raise ConnectionResetError("Simulated socket drop during ACK")
+            await super().send(destination, message)
+
+    ctx = FlakyAckMockContext()
+    sender = f"agent1qack_flaky_{uuid.uuid4().hex[:8]}"
+    incoming_msg = ChatMessage(
+        timestamp=datetime.now(timezone.utc),
+        msg_id=uuid.uuid4(),
+        content=[TextContent(type="text", text="Hello despite dropped ACK")]
+    )
+
+    await handle_chat_message(ctx, sender, incoming_msg)
+
+    # Final response must still be delivered despite failed ACK
+    assert len(ctx.sent_messages) == 1
+    reply = ctx.sent_messages[0]["message"]
+    assert isinstance(reply, ChatMessage)
+    assert len(reply.content) > 0
+
+
+def test_port_configuration_precedence():
+    """Verify that get_agent_port prioritizes Render's dynamic PORT over AGENT_PORT, with 8000 default."""
+    from unittest.mock import patch
+    import os
+    from config import get_agent_port
+
+    with patch.dict(os.environ, {"PORT": "10000", "AGENT_PORT": "8080"}):
+        assert get_agent_port() == 10000
+
+    with patch.dict(os.environ, {"PORT": "", "AGENT_PORT": "9000"}, clear=False):
+        assert get_agent_port() == 9000
+
+    with patch.dict(os.environ, {}, clear=True):
+        assert get_agent_port() == 8000
+
+
+@pytest.mark.asyncio
+async def test_health_endpoint_response():
+    """Verify that the GET /health REST endpoint returns public agent metadata and never exposes secrets."""
+    from agent import agent, HealthResponse
+
+    response = await agent.handle_rest("GET", "/health", None)
+    assert isinstance(response, HealthResponse)
+    assert response.status == "ok"
+    assert response.agent == agent.name
+    assert response.address == agent.address
+    assert response.address.startswith("agent1")
+    # Verify no credentials or private state are leaked
+    dumped = response.model_dump()
+    assert set(dumped.keys()) == {"status", "agent", "address"}

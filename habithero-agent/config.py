@@ -9,7 +9,16 @@ load_dotenv(dotenv_path=env_path)
 AGENT_NAME = os.getenv("AGENT_NAME", "HabitHero")
 AGENT_HANDLE = os.getenv("AGENT_HANDLE", "habithero")
 AGENT_SEED = os.getenv("AGENT_SEED_PHRASE", "habithero_hackathon_seed_phrase_stranger_builds_2026")
-AGENT_PORT = int(os.getenv("AGENT_PORT", "8000"))
+
+def get_agent_port() -> int:
+    """Read Render's dynamic PORT environment variable first, with AGENT_PORT and 8000 as fallbacks."""
+    raw_port = os.getenv("PORT") or os.getenv("AGENT_PORT") or "8000"
+    try:
+        return int(raw_port.strip())
+    except (ValueError, AttributeError):
+        return 8000
+
+AGENT_PORT = get_agent_port()
 
 def normalize_backend_url(raw_url: str) -> str:
     """Ensure backend API URL cleanly ends with /api/agent/chat without duplicate paths."""

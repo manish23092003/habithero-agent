@@ -23,7 +23,7 @@ class BackendClient:
         self.service_secret = service_secret
         self.health_url = health_url or get_health_url(self.backend_url)
 
-    async def check_health(self, timeout_sec: float = 3.0) -> Dict[str, Any]:
+    async def check_health(self, timeout_sec: float = 10.0) -> Dict[str, Any]:
         """
         Check whether the HabitHero backend API is running and reachable.
         Queries GET /api/health with a short timeout.
@@ -115,7 +115,7 @@ class BackendClient:
                 "backend_available": False,
                 "reply": (
                     "I cannot reach the HabitHero accountability engine right now. "
-                    "Please ensure the backend server is running on port 5000 and try again in a moment."
+                    "Please verify the backend service is running and try again in a moment."
                 ),
                 "error": f"Backend health check failed: {health.get('error')}",
             }
@@ -172,7 +172,7 @@ class BackendClient:
             return {
                 "success": False,
                 "backend_available": False,
-                "reply": "I cannot reach the HabitHero backend right now. Please ensure the backend server is running on port 5000.",
+                "reply": "I cannot reach the HabitHero backend right now. Please verify the backend service is running and try again in a moment.",
                 "error": str(conn_err),
             }
         except asyncio.TimeoutError:
