@@ -96,4 +96,3 @@ FeedbackSchema.index({ moderationStatus: 1, status: 1 });
 FeedbackSchema.index({ moderationStatus: 1, category: 1 });
 
 export const Feedback = mongoose.model<FeedbackDocument>('Feedback', FeedbackSchema);
-
