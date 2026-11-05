@@ -15,7 +15,9 @@ import {
   Menu, 
   X,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  MessageSquarePlus,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -102,6 +104,8 @@ export const AppLayout: React.FC = () => {
       breadcrumbs.push({ label: 'My Profile', path: '/app/profile' });
     } else if (segments[1] === 'settings') {
       breadcrumbs.push({ label: 'Settings', path: '/app/settings' });
+    } else if (segments[1] === 'admin') {
+      breadcrumbs.push({ label: 'Feedback Moderation', path: '/app/admin/feedback' });
     }
     return breadcrumbs;
   };
@@ -119,6 +123,7 @@ export const AppLayout: React.FC = () => {
   const accountItems = [
     { name: 'My Profile', path: '/app/profile', icon: User },
     { name: 'Settings', path: '/app/settings', icon: Settings },
+    { name: 'Feedback & Ideas', path: '/feedback', icon: MessageSquarePlus },
   ];
 
   return (
@@ -339,6 +344,24 @@ export const AppLayout: React.FC = () => {
                     >
                       <Settings className="w-3.5 h-3.5 text-[#5F6F65]" />
                       <span>Settings</span>
+                    </Link>
+
+                    <Link
+                      to="/feedback"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs text-[#26352D] hover:bg-[#F7F7F2] transition-colors flex items-center gap-2"
+                    >
+                      <MessageSquarePlus className="w-3.5 h-3.5 text-[#5F6F65]" />
+                      <span>Feedback & Roadmap</span>
+                    </Link>
+
+                    <Link
+                      to="/app/admin/feedback"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs text-[#26352D] hover:bg-[#F7F7F2] transition-colors flex items-center gap-2"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#245C46]" />
+                      <span>Admin Moderation</span>
                     </Link>
 
                     <button

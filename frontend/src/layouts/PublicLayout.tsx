@@ -51,13 +51,21 @@ export const PublicLayout: React.FC = () => {
               >
                 Features
               </NavLink>
-              <NavLink 
-                to="/about" 
-                className={({ isActive }) => 
+              <NavLink
+                to="/about"
+                className={({ isActive }) =>
                   `transition-colors hover:text-[#26352D] ${isActive ? 'text-[#245C46] font-bold' : ''}`
                 }
               >
                 About
+              </NavLink>
+              <NavLink
+                to="/feedback"
+                className={({ isActive }) =>
+                  `transition-colors hover:text-[#26352D] ${isActive ? 'text-[#245C46] font-bold' : ''}`
+                }
+              >
+                Feedback
               </NavLink>
             </nav>
 
@@ -136,12 +144,19 @@ export const PublicLayout: React.FC = () => {
               >
                 Features
               </Link>
-              <Link 
-                to="/about" 
+              <Link
+                to="/about"
                 onClick={() => setMobileMenuOpen(false)}
                 className="py-2 hover:text-[#26352D]"
               >
                 About
+              </Link>
+              <Link
+                to="/feedback"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-2 hover:text-[#26352D]"
+              >
+                Feedback & Community
               </Link>
             </nav>
 
@@ -222,6 +237,7 @@ export const PublicLayout: React.FC = () => {
                 <li><Link to="/" className="hover:text-[#245C46] transition-colors">Overview</Link></li>
                 <li><Link to="/features" className="hover:text-[#245C46] transition-colors">Features</Link></li>
                 <li><Link to="/about" className="hover:text-[#245C46] transition-colors">About</Link></li>
+                <li><Link to="/feedback" className="hover:text-[#245C46] transition-colors">Feedback & Roadmap</Link></li>
                 <li><Link to="/login" className="hover:text-[#245C46] transition-colors">Sign In</Link></li>
               </ul>
             </div>

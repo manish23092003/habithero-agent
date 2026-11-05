@@ -11,6 +11,7 @@ import { AppLayout } from './layouts/AppLayout';
 import { LandingPage } from './pages/public/LandingPage';
 import { FeaturesPage } from './pages/public/FeaturesPage';
 import { AboutPage } from './pages/public/AboutPage';
+import { FeedbackPage } from './pages/public/FeedbackPage';
 import { LoginPage } from './pages/public/LoginPage';
 import { RegisterPage } from './pages/public/RegisterPage';
 import { ForgotPasswordPage } from './pages/public/ForgotPasswordPage';
@@ -28,6 +29,7 @@ import { AnalyticsPage } from './pages/app/AnalyticsPage';
 import { AICompanionPage } from './pages/app/AICompanionPage';
 import { ProfilePage } from './pages/app/ProfilePage';
 import { SettingsPage } from './pages/app/SettingsPage';
+import { AdminFeedbackPage } from './pages/app/AdminFeedbackPage';
 
 export const App: React.FC = () => {
   return (
@@ -40,6 +42,7 @@ export const App: React.FC = () => {
             <Route path="/" element={<LandingPage />} />
             <Route path="/features" element={<FeaturesPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/feedback" element={<FeedbackPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>
@@ -91,6 +94,7 @@ export const App: React.FC = () => {
             <Route path="ai-companion" element={<AICompanionPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="admin/feedback" element={<AdminFeedbackPage />} />
           </Route>
 
           {/* Catch-all 404 Route */}

@@ -8,6 +8,7 @@ import { Conversation } from '../models/Conversation.js';
 import { Message } from '../models/Message.js';
 import { IdempotencyKey } from '../models/IdempotencyKey.js';
 import { PasswordResetToken } from '../models/PasswordResetToken.js';
+import { Feedback } from '../models/Feedback.js';
 
 let memoryServer: MongoMemoryServer | null = null;
 
@@ -29,6 +30,7 @@ export const syncDatabaseIndexesAndBackfill = async (): Promise<{ backfilledTask
       Message.createIndexes().catch(e => console.warn('[Database] Message createIndexes warning:', e.message)),
       IdempotencyKey.createIndexes().catch(e => console.warn('[Database] IdempotencyKey createIndexes warning:', e.message)),
       PasswordResetToken.createIndexes().catch(e => console.warn('[Database] PasswordResetToken createIndexes warning:', e.message)),
+      Feedback.createIndexes().catch(e => console.warn('[Database] Feedback createIndexes warning:', e.message)),
     ]);
 
     // 2. Safe, repeatable backfill: for completed tasks with valid completedAt, set completedDate = YYYY-MM-DD

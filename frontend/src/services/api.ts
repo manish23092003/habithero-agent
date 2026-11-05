@@ -1,4 +1,19 @@
-import { Goal, DailyTask, CheckInRecord, GoalCategory, UserAnalytics } from '../types';
+import {
+  Goal,
+  DailyTask,
+  CheckInRecord,
+  GoalCategory,
+  UserAnalytics,
+  FeedbackListResponse,
+  CreateFeedbackPayload,
+  CreateFeedbackResponse,
+  AdminFeedbackListResponse,
+  FeedbackModerationStatus,
+  FeedbackStatus,
+  UpdateModerationResponse,
+  UpdateStatusResponse,
+  AddOfficialReplyResponse,
+} from '../types';
 
 const isProd = Boolean((import.meta as any).env?.PROD);
 
@@ -106,12 +121,17 @@ class ApiService {
         if (response.status === 401 && !isAuthEndpoint) {
           this.removeToken();
         }
-        throw new Error(data.error || `Request failed with status ${response.status}`);
+        const error: any = new Error(data.error || `Request failed with status ${response.status}`);
+        error.status = response.status;
+        error.code = data.code;
+        error.retryAfter = response.headers.get('Retry-After');
+        error.details = data.details;
+        throw error;
       }
 
       return data;
     } catch (err: any) {
-      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+      if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
         throw new Error(
           isProd
             ? 'Backend server is temporarily unreachable. Please check your network connection and try again.'
@@ -546,6 +566,87 @@ class ApiService {
       headers: clientDate ? { 'X-Client-Date': clientDate } : {},
     });
     return res.data;
+  }
+
+  // --- Feedback & Community APIs ---
+  async getPublicFeedback(params?: {
+    page?: number;
+    limit?: number;
+    category?: string;
+    status?: string;
+  }): Promise<FeedbackListResponse> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.category && params.category !== 'all') query.set('category', params.category);
+    if (params?.status && params.status !== 'all') query.set('status', params.status);
+
+    const qs = query.toString();
+    const endpoint = `/feedback${qs ? `?${qs}` : ''}`;
+    return this.request<FeedbackListResponse>(endpoint);
+  }
+
+  async submitFeedback(payload: CreateFeedbackPayload): Promise<CreateFeedbackResponse> {
+    return this.request<CreateFeedbackResponse>('/feedback', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // --- Admin Moderation & Feedback APIs ---
+  async getAdminFeedback(params?: {
+    page?: number;
+    limit?: number;
+    moderationStatus?: string;
+    status?: string;
+    category?: string;
+  }): Promise<AdminFeedbackListResponse> {
+    const query = new URLSearchParams();
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.moderationStatus && params.moderationStatus !== 'all') {
+      query.set('moderationStatus', params.moderationStatus);
+    }
+    if (params?.status && params.status !== 'all') {
+      query.set('status', params.status);
+    }
+    if (params?.category && params.category !== 'all') {
+      query.set('category', params.category);
+    }
+
+    const qs = query.toString();
+    const endpoint = `/feedback/admin${qs ? `?${qs}` : ''}`;
+    return this.request<AdminFeedbackListResponse>(endpoint);
+  }
+
+  async updateFeedbackModeration(
+    id: string,
+    moderationStatus: FeedbackModerationStatus
+  ): Promise<UpdateModerationResponse> {
+    return this.request<UpdateModerationResponse>(`/feedback/admin/${id}/moderation`, {
+      method: 'PATCH',
+      body: JSON.stringify({ moderationStatus }),
+    });
+  }
+
+  async updateFeedbackStatus(
+    id: string,
+    status: FeedbackStatus
+  ): Promise<UpdateStatusResponse> {
+    return this.request<UpdateStatusResponse>(`/feedback/admin/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async addOfficialReply(
+    id: string,
+    content: string
+  ): Promise<AddOfficialReplyResponse> {
+    return this.request<AddOfficialReplyResponse>(`/feedback/admin/${id}/replies`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
   }
 
   async checkHealth(): Promise<boolean> {

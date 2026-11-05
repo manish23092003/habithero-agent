@@ -118,3 +118,5 @@ export interface UserAnalytics {
   }>;
 }
 
+export * from './feedback';
+

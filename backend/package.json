@@ -16,6 +16,7 @@
     "test:hardening": "cross-env NODE_ENV=test tsx --test tests/productionHardening.test.ts",
     "test:google": "cross-env NODE_ENV=test tsx --test tests/googleAuth.test.ts",
     "test:streak": "cross-env NODE_ENV=test tsx --test tests/streak.test.ts",
+    "test:feedback": "cross-env NODE_ENV=test tsx --test tests/feedback.test.ts",
     "test:chat": "cross-env NODE_ENV=test tsx tests/chat.test.ts",
     "test:reliability": "cross-env NODE_ENV=test tsx tests/reliability.test.ts",
     "test": "cross-env NODE_ENV=test tsx tests/api.test.ts && cross-env NODE_ENV=test tsx tests/agent.test.ts && cross-env NODE_ENV=test tsx tests/groq.test.ts && cross-env NODE_ENV=test tsx --test tests/analytics.test.ts && cross-env NODE_ENV=test tsx --test tests/passwordReset.test.ts && cross-env NODE_ENV=test tsx --test tests/productionHardening.test.ts && cross-env NODE_ENV=test tsx --test tests/googleAuth.test.ts && cross-env NODE_ENV=test tsx --test tests/streak.test.ts"

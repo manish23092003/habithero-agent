@@ -89,3 +89,30 @@ export interface AuthenticatedRequest extends Request {
     name: string;
   };
 }
+
+export type FeedbackCategory = 'feature_request' | 'bug_report' | 'general' | 'improvement';
+export type FeedbackStatus = 'under_review' | 'planned' | 'in_progress' | 'completed' | 'declined';
+export type FeedbackModerationStatus = 'pending' | 'approved' | 'rejected' | 'spam';
+
+export interface IOfficialReply {
+  _id?: Types.ObjectId;
+  authorName: string;
+  authorId?: Types.ObjectId;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IFeedback {
+  _id: Types.ObjectId;
+  title: string;
+  description: string;
+  category: FeedbackCategory;
+  status: FeedbackStatus;
+  moderationStatus: FeedbackModerationStatus;
+  displayName?: string;
+  email?: string;
+  officialReplies: IOfficialReply[];
+  createdAt: Date;
+  updatedAt: Date;
+}

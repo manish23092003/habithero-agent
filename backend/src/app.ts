@@ -11,10 +11,22 @@ import checkInRoutes from './routes/checkInRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import agentRoutes from './routes/agentRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import feedbackRoutes from './routes/feedbackRoutes.js';
 
 dotenv.config();
 
 export const app = express();
+
+// Reverse proxy trust configuration:
+// In production (e.g. Render / Railway single-hop reverse proxy), trust the immediate fronting proxy (1 hop)
+// so that req.ip accurately reflects the client IP without trusting arbitrary upstream spoofed headers.
+// In development/test, keep default (disabled) unless explicitly configured via TRUST_PROXY.
+if (process.env.TRUST_PROXY !== undefined) {
+  const parsedHops = parseInt(process.env.TRUST_PROXY, 10);
+  app.set('trust proxy', isNaN(parsedHops) ? process.env.TRUST_PROXY === 'true' : parsedHops);
+} else if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 
 // Initialize event-loop delay monitor for production observability
 const eld = monitorEventLoopDelay({ resolution: 20 });
@@ -204,6 +216,7 @@ app.use('/api/checkins', checkInRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/agent', agentRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

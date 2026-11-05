@@ -21,6 +21,17 @@
   outline-offset: 2px;
 }
 
+/* Modern modal dialog scroll containment & backdrop */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: rgba(38, 53, 45, 0.45);
+  backdrop-filter: blur(4px);
+}
+
 /* Custom scrollbars for clean UI */
 ::-webkit-scrollbar {
   width: 6px;
