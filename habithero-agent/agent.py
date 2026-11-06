@@ -1,6 +1,7 @@
 import uuid
 import logging
 import asyncio
+from typing import Any
 from datetime import datetime, timezone
 from uagents import Agent, Context, Protocol, Model
 from uagents_core.contrib.protocols.chat import (
@@ -25,12 +26,34 @@ logger = logging.getLogger("HabitHeroAgent")
 # Initialize Chat Protocol from official Fetch.ai specification (version 0.3.0)
 chat_proto = Protocol(spec=chat_protocol_spec)
 
+
+def _log_send_status(logger: Any, msg_type: str, msg_id: Any, sender: str, send_result: Any) -> bool:
+    """Inspect and log the delivery status of a sent message."""
+    if send_result is None:
+        logger.info(f"Dispatched {msg_type} {msg_id} to {sender}")
+        return True
+
+    status_val = getattr(send_result, "status", None)
+    detail = getattr(send_result, "detail", "")
+    status_str = status_val.value if hasattr(status_val, "value") else str(status_val) if status_val else "sent"
+
+    if status_str in ("delivered", "sent"):
+        logger.info(f"Delivered {msg_type} {msg_id} to {sender} (status: {status_str})")
+        return True
+    elif status_str == "failed":
+        logger.error(f"Failed to deliver {msg_type} {msg_id} to {sender}: {detail or 'Delivery failed'}")
+        return False
+    else:
+        logger.info(f"Sent {msg_type} {msg_id} to {sender} (status: {status_str})")
+        return True
+
+
 @chat_proto.on_message(model=ChatMessage)
 async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
     """
     Handle incoming chat messages conforming to Fetch.ai AgentChatProtocol 0.3.0.
     1. Send immediate delivery acknowledgement to sender.
-    2. Extract and sanitize message text.
+    2. Extract and sanitize message text and metadata.
     3. Forward message to HabitHero Node.js AI backend for tool execution and reasoning.
     4. Return AI response back through Fetch.ai Chat Protocol.
     5. Always guarantee a ChatMessage reply so ASI:One never remains stuck in 'Reasoning...'.
@@ -44,19 +67,29 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
                 timestamp=datetime.now(timezone.utc),
                 acknowledged_msg_id=msg.msg_id,
             )
-            await ctx.send(sender, ack)
-            ctx.logger.info(f"Sent ChatAcknowledgement for {msg.msg_id} to {sender}")
+            ack_res = await ctx.send(sender, ack)
+            _log_send_status(ctx.logger, "ChatAcknowledgement", msg.msg_id, sender, ack_res)
         except Exception as ack_err:
             ctx.logger.warning(f"Failed to send ChatAcknowledgement to {sender}: {ack_err}")
 
-        # 2. Extract text content safely from content list
+        # 2. Extract text content and metadata safely from content list
         text_content = ""
+        conversation_id = None
         if msg.content:
             for item in msg.content:
                 if hasattr(item, "text") and item.text:
                     text_content += item.text.strip() + " "
                 elif isinstance(item, dict) and item.get("text"):
                     text_content += str(item["text"]).strip() + " "
+                # Extract conversationId from metadata if present and valid ObjectId format
+                elif hasattr(item, "metadata") and isinstance(item.metadata, dict):
+                    cid = item.metadata.get("conversationId") or item.metadata.get("conversation_id")
+                    if cid and isinstance(cid, str) and (len(cid) == 24 or cid == "new"):
+                        conversation_id = cid
+                elif isinstance(item, dict) and isinstance(item.get("metadata"), dict):
+                    cid = item["metadata"].get("conversationId") or item["metadata"].get("conversation_id")
+                    if cid and isinstance(cid, str) and (len(cid) == 24 or cid == "new"):
+                        conversation_id = cid
         text_content = text_content.strip()
 
         # 3. Handle empty message edge case
@@ -72,7 +105,8 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
                     )
                 ]
             )
-            await ctx.send(sender, empty_reply)
+            send_res = await ctx.send(sender, empty_reply)
+            _log_send_status(ctx.logger, "empty guidance ChatMessage", empty_reply.msg_id, sender, send_res)
             return
 
         # 4. Forward message to HabitHero Node.js backend with timeout protection
@@ -82,11 +116,12 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
                 backend_client.forward_to_backend(
                     sender=sender,
                     message=text_content,
+                    conversation_id=conversation_id,
                 ),
-                timeout=50.0
+                timeout=30.0
             )
         except asyncio.TimeoutError:
-            ctx.logger.error(f"Timeout waiting for backend forward for sender {sender}")
+            ctx.logger.error(f"Timeout waiting for backend forward for sender {sender} after 30.0s")
             backend_res = {
                 "reply": "My accountability engine is taking longer than usual to formulate a response. Your habit data is safe. Please send your message again in a moment."
             }
@@ -102,8 +137,8 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
             msg_id=uuid.uuid4(),
             content=[TextContent(type="text", text=reply_text)]
         )
-        await ctx.send(sender, response_msg)
-        ctx.logger.info(f"Sent reply ChatMessage {response_msg.msg_id} to {sender}")
+        send_res = await ctx.send(sender, response_msg)
+        _log_send_status(ctx.logger, "reply ChatMessage", response_msg.msg_id, sender, send_res)
 
     except Exception as exc:
         ctx.logger.error(f"Unhandled error in handle_chat_message for sender {sender}: {exc}")
@@ -118,8 +153,8 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
                     )
                 ]
             )
-            await ctx.send(sender, fallback_msg)
-            ctx.logger.info(f"Sent fallback error ChatMessage to {sender}")
+            fallback_res = await ctx.send(sender, fallback_msg)
+            _log_send_status(ctx.logger, "fallback error ChatMessage", fallback_msg.msg_id, sender, fallback_res)
         except Exception as send_err:
             ctx.logger.error(f"Failed to send fallback ChatMessage to {sender}: {send_err}")
 

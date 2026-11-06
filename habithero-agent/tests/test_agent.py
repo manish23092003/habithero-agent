@@ -26,8 +26,8 @@ from config import (
     normalize_backend_url,
     get_health_url,
 )
-from backend_client import BackendClient, backend_client
-from agent import create_agent, chat_proto, handle_chat_message, handle_acknowledgement
+from backend_client import BackendClient, backend_client, _sanitize_error_preview
+from agent import create_agent, chat_proto, handle_chat_message, handle_acknowledgement, _log_send_status
 
 
 class MockContext:
@@ -380,3 +380,281 @@ async def test_health_endpoint_response():
     # Verify no credentials or private state are leaked
     dumped = response.model_dump()
     assert set(dumped.keys()) == {"status", "agent", "address"}
+
+
+def test_sanitize_error_preview_helper():
+    """Verify HTML error pages and large payloads are safely sanitized and truncated."""
+    # 1. Full Render HTML error page with SVG and footer
+    html_page = (
+        "<!DOCTYPE html><html><head><title>502 Bad Gateway</title></head>"
+        "<body><h1>502 Bad Gateway</h1><p>Render edge proxy</p>"
+        "<svg><path d='M15.65.006a5.137 5.137 0 0 0-5.321 4.367c...'></path></svg>"
+        "<footer>&copy; Render Inc. All rights reserved.</footer></body></html>"
+    )
+    sanitized = _sanitize_error_preview(html_page)
+    assert "<svg" not in sanitized
+    assert "<path" not in sanitized
+    assert "M15.65" not in sanitized
+    assert "[HTML page:" in sanitized
+    assert "502 Bad Gateway" in sanitized
+
+    # 2. JSON error message truncation
+    long_msg = "x" * 200
+    assert len(_sanitize_error_preview(long_msg, max_len=50)) <= 55
+    assert _sanitize_error_preview(long_msg, max_len=50).endswith("...")
+
+    # 3. Empty input handling
+    assert _sanitize_error_preview("") == "<empty response>"
+    assert _sanitize_error_preview("   ") == "<empty response>"
+
+
+@pytest.mark.asyncio
+async def test_backend_client_502_503_504_gateway_responses():
+    """Verify client gracefully handles HTTP 502, 503, 504 gateway errors without crashing or logging raw HTML."""
+    mock_app = web.Application()
+
+    current_status = {"code": 502}
+
+    async def mock_health(_req):
+        return web.Response(
+            text="<!DOCTYPE html><html><body><h1>Warming Up</h1></body></html>",
+            status=current_status["code"],
+            content_type="text/html"
+        )
+
+    async def mock_chat(_req):
+        return web.Response(
+            text="<!DOCTYPE html><html><body><h1>Gateway Error</h1></body></html>",
+            status=current_status["code"],
+            content_type="text/html"
+        )
+
+    mock_app.router.add_get("/api/health", mock_health)
+    mock_app.router.add_post("/api/agent/chat", mock_chat)
+
+    runner = web.AppRunner(mock_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    port = site._server.sockets[0].getsockname()[1]
+    base_url = f"http://127.0.0.1:{port}"
+
+    try:
+        client = BackendClient(
+            backend_url=f"{base_url}/api/agent/chat",
+            health_url=f"{base_url}/api/health",
+            service_secret="secret",
+            health_timeout_sec=2.0,
+            chat_timeout_sec=2.0,
+        )
+
+        for code in (502, 503, 504):
+            current_status["code"] = code
+            res = await client.forward_to_backend(
+                sender="agent1qtest_gateway",
+                message="Check my streak"
+            )
+            assert res["success"] is False
+            assert "warming up or temporarily unavailable" in res["reply"]
+            assert f"HTTP {code}" in res["error"]
+            assert "<html" not in res["error"].lower()
+    finally:
+        await runner.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_backend_client_invalid_json_and_html_200():
+    """Verify client rejects HTTP 200 with HTML content-type (SPA fallback) or malformed JSON syntax."""
+    mock_app = web.Application()
+    mode = {"mode": "html_200"}
+
+    async def mock_health(_req):
+        return web.json_response({"status": "ok"})
+
+    async def mock_chat(_req):
+        if mode["mode"] == "html_200":
+            return web.Response(
+                text="<!DOCTYPE html><html><body><div id='root'></div></body></html>",
+                status=200,
+                content_type="text/html"
+            )
+        elif mode["mode"] == "malformed_json":
+            return web.Response(
+                text="{\"success\": true, \"data\": {malformed",
+                status=200,
+                content_type="application/json"
+            )
+
+    mock_app.router.add_get("/api/health", mock_health)
+    mock_app.router.add_post("/api/agent/chat", mock_chat)
+
+    runner = web.AppRunner(mock_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    port = site._server.sockets[0].getsockname()[1]
+    base_url = f"http://127.0.0.1:{port}"
+
+    try:
+        client = BackendClient(
+            backend_url=f"{base_url}/api/agent/chat",
+            health_url=f"{base_url}/api/health",
+            service_secret="secret",
+            health_timeout_sec=2.0,
+            chat_timeout_sec=2.0,
+        )
+
+        # 1. Test HTML 200 response rejection
+        mode["mode"] = "html_200"
+        res_html = await client.forward_to_backend(
+            sender="agent1qtester",
+            message="Hello"
+        )
+        assert res_html["success"] is False
+        assert "unexpected response format" in res_html["reply"]
+        assert "Invalid content type" in res_html["error"]
+
+        # 2. Test malformed JSON 200 handling
+        mode["mode"] = "malformed_json"
+        res_json = await client.forward_to_backend(
+            sender="agent1qtester",
+            message="Hello again"
+        )
+        assert res_json["success"] is False
+        assert "reading data from my accountability engine" in res_json["reply"]
+        assert "JSON parse error" in res_json["error"]
+    finally:
+        await runner.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_backend_client_timeout_handling():
+    """Verify backend request timeout triggers clean fallback without throwing unhandled exceptions."""
+    mock_app = web.Application()
+
+    async def mock_health(_req):
+        return web.json_response({"status": "ok"})
+
+    async def mock_chat(_req):
+        await asyncio.sleep(1.0)
+        return web.json_response({"success": True, "data": {"reply": "Too late"}})
+
+    mock_app.router.add_get("/api/health", mock_health)
+    mock_app.router.add_post("/api/agent/chat", mock_chat)
+
+    runner = web.AppRunner(mock_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    port = site._server.sockets[0].getsockname()[1]
+    base_url = f"http://127.0.0.1:{port}"
+
+    try:
+        fast_client = BackendClient(
+            backend_url=f"{base_url}/api/agent/chat",
+            health_url=f"{base_url}/api/health",
+            service_secret="secret",
+            health_timeout_sec=1.0,
+            chat_timeout_sec=0.2,
+        )
+
+        res = await fast_client.forward_to_backend(
+            sender="agent1qtester_timeout",
+            message="Will this timeout?"
+        )
+        assert res["success"] is False
+        assert "taking longer than usual to respond" in res["reply"]
+        assert res["error"] == "Request timed out"
+    finally:
+        await runner.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_backend_client_conversation_caching_and_forwarding():
+    """Verify BackendClient caches conversationId returned by backend and automatically forwards it on next turn."""
+    mock_app = web.Application()
+    received_payloads = []
+
+    async def mock_health(_req):
+        return web.json_response({"status": "ok"})
+
+    async def mock_chat(req):
+        body = await req.json()
+        received_payloads.append(body)
+        return web.json_response({
+            "success": True,
+            "data": {
+                "reply": "Turn processed",
+                "conversationId": "65f123456789abcdef012345",
+                "userId": "user_abc"
+            }
+        })
+
+    mock_app.router.add_get("/api/health", mock_health)
+    mock_app.router.add_post("/api/agent/chat", mock_chat)
+
+    runner = web.AppRunner(mock_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    port = site._server.sockets[0].getsockname()[1]
+    base_url = f"http://127.0.0.1:{port}"
+
+    try:
+        client = BackendClient(
+            backend_url=f"{base_url}/api/agent/chat",
+            health_url=f"{base_url}/api/health",
+            service_secret="secret",
+        )
+
+        sender = "agent1qmultiturn_user"
+
+        # Turn 1: No conversationId cached yet
+        res1 = await client.forward_to_backend(sender=sender, message="First turn")
+        assert res1["success"] is True
+        assert res1["conversationId"] == "65f123456789abcdef012345"
+        assert "conversationId" not in received_payloads[0]
+
+        # Verify client cached it
+        assert client.get_conversation_id(sender) == "65f123456789abcdef012345"
+
+        # Turn 2: Client should automatically forward cached conversationId
+        res2 = await client.forward_to_backend(sender=sender, message="Second turn")
+        assert res2["success"] is True
+        assert received_payloads[1].get("conversationId") == "65f123456789abcdef012345"
+
+        # Clear conversation
+        client.clear_conversation(sender)
+        assert client.get_conversation_id(sender) is None
+    finally:
+        await runner.cleanup()
+
+
+def test_send_status_inspection_and_logging():
+    """Verify _log_send_status handles diverse delivery statuses (delivered, sent, failed, None)."""
+    from collections import namedtuple
+
+    class DummyLogger:
+        def __init__(self):
+            self.infos = []
+            self.errors = []
+        def info(self, msg): self.infos.append(msg)
+        def error(self, msg): self.errors.append(msg)
+
+    logger = DummyLogger()
+    StatusObj = namedtuple("StatusObj", ["status", "detail"])
+
+    # 1. None (mock context)
+    assert _log_send_status(logger, "ChatMessage", "123", "agent1q", None) is True
+    assert "Dispatched" in logger.infos[-1]
+
+    # 2. Delivered
+    delivered_obj = StatusObj(status="delivered", detail="")
+    assert _log_send_status(logger, "ChatMessage", "123", "agent1q", delivered_obj) is True
+    assert "Delivered" in logger.infos[-1]
+
+    # 3. Failed
+    failed_obj = StatusObj(status="failed", detail="Route unreachable")
+    assert _log_send_status(logger, "ChatMessage", "123", "agent1q", failed_obj) is False
+    assert "Failed to deliver" in logger.errors[-1]
+
