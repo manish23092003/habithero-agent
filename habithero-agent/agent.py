@@ -18,6 +18,7 @@ from config import (
     AGENT_MAILBOX_KEY,
 )
 from backend_client import backend_client
+from mailbox_client import AuthenticatedMailboxClient
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s")
@@ -177,15 +178,39 @@ def create_agent(
     """
     Create and configure the HabitHero Fetch.ai uAgent with Chat Protocol 0.3.0 and Agentverse capabilities.
     """
+    clean_mailbox_key = mailbox_key.strip() if (mailbox_key and isinstance(mailbox_key, str)) else None
+
     agent_instance = Agent(
         name=name,
         seed=seed,
         port=port,
-        mailbox=mailbox_key if mailbox_key else None,
+        mailbox=bool(clean_mailbox_key),
         handle=handle,
         publish_agent_details=True,
         description="An AI companion that helps people build consistent habits through personalized plans, daily check-ins, progress tracking and adaptive accountability.",
     )
+
+    if clean_mailbox_key:
+        # Use AuthenticatedMailboxClient for Bearer-token authentication against Agentverse mailbox
+        agent_instance._mailbox_client = AuthenticatedMailboxClient(
+            identity=agent_instance._identity,
+            agentverse=agent_instance._agentverse,
+            logger=agent_instance._logger,
+            mailbox_key=clean_mailbox_key,
+        )
+        agent_instance._use_mailbox = True
+    else:
+        # Strictly ensure no default MailboxClient exists or can be scheduled
+        agent_instance._mailbox_client = None
+        agent_instance._use_mailbox = False
+        if hasattr(agent_instance, "_endpoints") and agent_instance._endpoints:
+            agent_instance._endpoints = [
+                ep for ep in agent_instance._endpoints
+                if agent_instance._agentverse.mailbox_endpoint not in ep.url
+            ]
+        agent_instance._logger.warning(
+            "AGENT_MAILBOX_KEY is not configured; mailbox polling is completely disabled."
+        )
 
     # Include the verified Chat Protocol with published manifest
     agent_instance.include(chat_proto, publish_manifest=True)
